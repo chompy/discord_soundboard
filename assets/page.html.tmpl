@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.0.0/build/pure-min.css" integrity="sha384-X38yfunGUhNzHpBaEBsWLO+A0HDYOQi8ufWDkZ0k9e0eXz/tH3II7uKZ9msv++Ls" crossorigin="anonymous">
+  <style type="text/css">
+    html, body { margin: 15px; }
+    h1 { border-bottom: 1px solid; padding-bottom: 5px; margin-bottom: 10px; }
+    .options { border-bottom: 1px solid; padding-bottom: 10px; }
+    .sounds { margin-top: 10px; }
+    .sounds a { margin-bottom: 10px; }
+  </style>
+  <title>{{ .GuildName }} - Sound Board</title>
+</head>
+
+<body>
+  <h1>{{ .GuildName }} - Sound Board</h1>
+  <div class="options">
+    <a class="pure-button pure-button-primary" href="/reload">Reload</a>
+    <a class="pure-button pure-button-primary" href="/reload">Stop</a>
+  </div>
+  <div class="sounds">
+    {{ range $name := .Sounds }}
+      <a class="pure-button" href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}">{{ $name }}</a>
+    {{ end }}  
+  </div>
+
+  <script type="text/javascript">
+    let buttons = document.getElementsByTagName("a");
+    for (let i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function(e) {
+        e.preventDefault(true);
+        fetch(e.target.getAttribute("href"));
+      });
+    }
+  </script>
+
+</body>
+
+</html>
