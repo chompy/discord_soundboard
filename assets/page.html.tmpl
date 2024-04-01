@@ -19,7 +19,7 @@
   <h1>{{ .GuildName }} - Sound Board</h1>
   <div class="options">
     <a class="pure-button pure-button-primary" href="/reload">Reload</a>
-    <a class="pure-button pure-button-primary" href="/reload">Stop</a>
+    <a class="pure-button pure-button-primary" href="/stop?guild={{ $.GuildID }}&channel={{ $.ChannelID }}">Stop</a>
   </div>
   <div class="sounds">
     {{ range $name := .Sounds }}
