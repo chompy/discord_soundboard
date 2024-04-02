@@ -48,6 +48,7 @@ func (v *VoiceSession) Process(app *App) error {
 		}
 		timeElasped := time.Since(v.lastActivity)
 		if timeElasped > time.Duration(app.BotTimeout)*time.Second {
+			log.Printf("> Timeout in channel '%s.'", v.ChannelID)
 			return v.End()
 		}
 	}
@@ -56,10 +57,14 @@ func (v *VoiceSession) Process(app *App) error {
 }
 
 func (v *VoiceSession) End() error {
+	v.isSpeaking = false
+	v.buffer = make([][]byte, 0)
 	if v.conn == nil {
 		return nil
 	}
-	return v.conn.Disconnect()
+	err := v.conn.Disconnect()
+	v.conn = nil
+	return err
 }
 
 func (v *VoiceSession) Stop() {

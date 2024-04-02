@@ -22,7 +22,7 @@ func (a *App) Start() error {
 	if botToken == "" {
 		return errNoToken
 	}
-	a.SoundPath, _ = os.LookupEnv("SOUNDBOARD_DCA_PATH")
+	a.SoundPath, _ = os.LookupEnv("SOUNDBOARD_SOUND_PATH")
 	if a.SoundPath == "" {
 		a.SoundPath = "./sounds"
 	}
