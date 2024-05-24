@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -66,7 +67,7 @@ func (a *App) VoiceSession(guildID string, channelID string) *VoiceSession {
 }
 
 func (a *App) onDiscordReady(s *discordgo.Session, event *discordgo.Ready) {
-	s.UpdateGameStatus(0, "sounds")
+	s.UpdateGameStatus(0, fmt.Sprintf("%d weiner loving sounds", len(a.sounds)))
 	go httpStart(a)
 	go a.appLoop()
 }

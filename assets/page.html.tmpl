@@ -6,11 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@3.0.0/build/pure-min.css" integrity="sha384-X38yfunGUhNzHpBaEBsWLO+A0HDYOQi8ufWDkZ0k9e0eXz/tH3II7uKZ9msv++Ls" crossorigin="anonymous">
   <style type="text/css">
-    html, body { margin: 15px; }
+    html, body { margin: 15px;  background: black; color: #fff; }
     h1 { border-bottom: 1px solid; padding-bottom: 5px; margin-bottom: 10px; }
     .options { border-bottom: 1px solid; padding-bottom: 10px; }
     .sounds { margin-top: 10px; }
     .sounds a { margin-bottom: 10px; }
+    .pure-button { background-color: #8c4141; color: #fff; }
   </style>
   <title>{{ .GuildName }} - Sound Board</title>
 </head>
@@ -18,7 +19,7 @@
 <body>
   <h1>{{ .GuildName }} - Sound Board</h1>
   <div class="options">
-    <a class="pure-button pure-button-primary" href="/stop?guild={{ $.GuildID }}&channel={{ $.ChannelID }}">Stop</a>
+    <a class="pure-button pure-button-primary" href="/stop?guild={{ $.GuildID }}&channel={{ $.ChannelID }}">Stop Current Playback</a>
   </div>
   <div class="sounds">
     {{ range $name := .Sounds }}

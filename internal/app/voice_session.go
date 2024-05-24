@@ -2,19 +2,23 @@ package app
 
 import (
 	"log"
+	"math/rand"
 	"slices"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
 
+const randomSound = "yoshi-tongue"
+
 type VoiceSession struct {
-	GuildID      string
-	ChannelID    string
-	conn         *discordgo.VoiceConnection
-	buffer       [][]byte
-	lastActivity time.Time
-	isSpeaking   bool
+	GuildID             string
+	ChannelID           string
+	conn                *discordgo.VoiceConnection
+	buffer              [][]byte
+	lastActivity        time.Time
+	isSpeaking          bool
+	nextSilenceInterupt time.Time
 }
 
 func (v *VoiceSession) Process(app *App) error {
@@ -25,6 +29,7 @@ func (v *VoiceSession) Process(app *App) error {
 			var err error
 			v.conn, err = app.discord.ChannelVoiceJoin(v.GuildID, v.ChannelID, false, true)
 			if err != nil {
+				v.End()
 				return err
 			}
 		}
@@ -50,6 +55,10 @@ func (v *VoiceSession) Process(app *App) error {
 		if timeElasped > time.Duration(app.BotTimeout)*time.Second {
 			log.Printf("> Timeout in channel '%s.'", v.ChannelID)
 			return v.End()
+		}
+		if time.Now().After(v.nextSilenceInterupt) && app.sounds[randomSound] != nil {
+			log.Println("> Interupt silence!")
+			return v.Play(randomSound, app)
 		}
 	}
 
@@ -77,6 +86,7 @@ func (v *VoiceSession) Play(name string, app *App) error {
 		return errSoundNotFound
 	}
 	log.Printf("> Play '%s' in channel '%s'.", name, v.ChannelID)
+	v.nextSilenceInterupt = time.Now().Add(time.Second * time.Duration((rand.Int63n(3540) + 60)))
 	v.buffer = slices.Clone(app.sounds[name])
 	return nil
 }
