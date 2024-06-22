@@ -45,13 +45,13 @@ func buildPageDataFromRequest(r *http.Request) (PageData, error) {
 func renderMainPage(w http.ResponseWriter, r *http.Request) {
 	pd, err := buildPageDataFromRequest(r)
 	if err != nil {
-		httpError(w, r, err)
+		httpError(w, err)
 		return
 	}
 	mainPageTmpl.Execute(w, pd)
 }
 
-func httpJsonOutput(w http.ResponseWriter, r *http.Request, data interface{}, statusCode int) {
+func httpJsonOutput(w http.ResponseWriter, data interface{}, statusCode int) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -63,9 +63,9 @@ func httpJsonOutput(w http.ResponseWriter, r *http.Request, data interface{}, st
 	w.Write(jsonData)
 }
 
-func httpError(w http.ResponseWriter, r *http.Request, err error) {
+func httpError(w http.ResponseWriter, err error) {
 	out := map[string]interface{}{"status": http.StatusInternalServerError, "message": err.Error()}
-	httpJsonOutput(w, r, out, http.StatusInternalServerError)
+	httpJsonOutput(w, out, http.StatusInternalServerError)
 }
 
 func httpPlaySound(w http.ResponseWriter, r *http.Request) {
@@ -73,45 +73,64 @@ func httpPlaySound(w http.ResponseWriter, r *http.Request) {
 	channelID := r.URL.Query().Get("channel")
 	soundName := r.URL.Query().Get("sound")
 	if guildID == "" || channelID == "" || soundName == "" {
-		httpError(w, r, errMissingParam)
+		httpError(w, errMissingParam)
 		return
 	}
 
-	vs := httpApp.VoiceSession(guildID, channelID)
-	if err := vs.Play(soundName, httpApp); err != nil {
-		httpError(w, r, err)
+	vs := httpApp.VoiceSession(guildID)
+	if err := vs.Play(soundName, httpApp, channelID); err != nil {
+		httpError(w, err)
 		return
 	}
 
-	httpJsonOutput(w, r, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
+	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
+}
+
+func httpPlayMultiSound(w http.ResponseWriter, r *http.Request) {
+	guildID := r.URL.Query().Get("guild")
+	channelID := r.URL.Query().Get("channel")
+	instructions := r.URL.Query().Get("instructs")
+	if guildID == "" || channelID == "" || instructions == "" {
+		httpError(w, errMissingParam)
+		return
+	}
+
+	vs := httpApp.VoiceSession(guildID)
+	if err := vs.PlayMulti(instructions, httpApp, channelID); err != nil {
+		httpError(w, err)
+		return
+	}
+
+	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
 }
 
 func httpStopSound(w http.ResponseWriter, r *http.Request) {
 	guildID := r.URL.Query().Get("guild")
 	channelID := r.URL.Query().Get("channel")
 	if guildID == "" || channelID == "" {
-		httpError(w, r, errMissingParam)
+		httpError(w, errMissingParam)
 		return
 	}
 
-	vs := httpApp.VoiceSession(guildID, channelID)
+	vs := httpApp.VoiceSession(guildID)
 	vs.Stop()
 
-	httpJsonOutput(w, r, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
+	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
 }
 
 func httpReload(w http.ResponseWriter, r *http.Request) {
 	if err := httpApp.loadAllSounds(); err != nil {
-		httpError(w, r, err)
+		httpError(w, err)
 		return
 	}
-	httpJsonOutput(w, r, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
+	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
 }
 
 func httpStart(app *App) error {
 	httpApp = app
 	http.HandleFunc("/", renderMainPage)
 	http.HandleFunc("/play", httpPlaySound)
+	http.HandleFunc("/playm", httpPlayMultiSound)
 	http.HandleFunc("/stop", httpStopSound)
 	http.HandleFunc("/reload", httpReload)
 	return http.ListenAndServe(":8081", nil)
