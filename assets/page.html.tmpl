@@ -40,7 +40,6 @@
       e.preventDefault(true);
       let url = "/playm?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&instructs="
       let instruct = prompt("Play snippets of different sounds back to back.\nUse the format...\n<sound_name>:<start>-<end>,<sound_name>:<start>-<end>,etc\nStart/end are in milliseconds.")
-      console.log("TEST");
       if (instruct) {
         fetch(url + instruct);
       }
