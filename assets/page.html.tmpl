@@ -20,6 +20,7 @@
   <h1>{{ .GuildName }} - Sound Board</h1>
   <div class="options">
     <a class="pure-button pure-button-primary" href="/stop?guild={{ $.GuildID }}&channel={{ $.ChannelID }}">Stop Current Playback</a>
+    <a class="pure-button pure-button-primary" id="play-multi" href="#">Play Multiple Sounds</a>
   </div>
   <div class="sounds">
     {{ range $name := .Sounds }}
@@ -35,6 +36,16 @@
         fetch(e.target.getAttribute("href"));
       });
     }
+    document.getElementById("play-multi").addEventListener("click", function(e) {
+      e.preventDefault(true);
+      let url = "/playm?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&instructs="
+      let instruct = prompt("Play snippets of different sounds back to back.\nUse the format...\n<sound_name>:<start>-<end>,<sound_name>:<start>-<end>,etc\nStart/end are in milliseconds.")
+      console.log("TEST");
+      if (instruct) {
+        fetch(url + instruct);
+      }
+      return false;
+    });
   </script>
 
 </body>
