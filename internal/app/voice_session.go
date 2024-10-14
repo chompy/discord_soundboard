@@ -52,8 +52,8 @@ func (v *VoiceSession) Process(app *App) error {
 			v.isSpeaking = false
 		}
 
-		if len(app.RandomSounds) > 0 {
-			randomSound := app.RandomSounds[rand.Intn(len(app.RandomSounds))]
+		if len(app.Config.RandomSounds) > 0 {
+			randomSound := app.Config.RandomSounds[rand.Intn(len(app.Config.RandomSounds))]
 			if time.Now().After(v.nextSilenceInterupt) && app.sounds[randomSound] != nil {
 				log.Println("> Interupt silence!")
 				return v.Play(randomSound, app, v.ChannelID)
@@ -93,7 +93,7 @@ func (v *VoiceSession) Play(name string, app *App, channelID string) error {
 	}
 
 	log.Printf("> Play '%s' in channel '%s'.", name, v.ChannelID)
-	v.nextSilenceInterupt = time.Now().Add(time.Second * time.Duration((rand.Int63n(app.RandomSoundInterval-60) + 60)))
+	v.nextSilenceInterupt = time.Now().Add(time.Second * time.Duration((rand.Int63n(app.Config.RandomSoundInterval-60) + 60)))
 	v.buffer = slices.Clone(app.sounds[name])
 	return nil
 }
@@ -137,7 +137,7 @@ func (v *VoiceSession) PlayMulti(instructionList string, app *App, channelID str
 		v.buffer = append(v.buffer, nextBuffer...)
 	}
 	log.Printf("> Play multi-sound in channel '%s'. (%s)", v.ChannelID, instructionList)
-	v.nextSilenceInterupt = time.Now().Add(time.Second * time.Duration((rand.Int63n(app.RandomSoundInterval-60) + 60)))
+	v.nextSilenceInterupt = time.Now().Add(time.Second * time.Duration((rand.Int63n(app.Config.RandomSoundInterval-60) + 60)))
 	return nil
 }
 

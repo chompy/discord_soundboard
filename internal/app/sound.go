@@ -39,13 +39,13 @@ func loadSound(path string) ([][]byte, error) {
 
 // loadAllSounds iterates sound directory and attempts to load all opus sound files in to memory.
 func (a *App) loadAllSounds() error {
-	dirRead, err := os.ReadDir(a.SoundPath)
+	dirRead, err := os.ReadDir(a.Config.SoundPath)
 	if err != nil {
 		return err
 	}
 	a.sounds = make(map[string][][]byte)
 	for _, file := range dirRead {
-		fullPath := filepath.Join(a.SoundPath, file.Name())
+		fullPath := filepath.Join(a.Config.SoundPath, file.Name())
 		if filepath.Ext(fullPath) == ".opus" {
 			log.Printf("> Load sound '%s.'", fullPath)
 			data, err := loadSound(fullPath)

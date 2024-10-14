@@ -4,20 +4,16 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
 
 type App struct {
-	SoundPath           string
-	RandomSoundInterval int64
-	RandomSounds        []string
-	sounds              map[string][][]byte
-	discord             *discordgo.Session
-	voiceSessions       []*VoiceSession
+	Config        Config
+	sounds        map[string][][]byte
+	discord       *discordgo.Session
+	voiceSessions []*VoiceSession
 }
 
 func (a *App) Start() error {
@@ -26,19 +22,17 @@ func (a *App) Start() error {
 	if botToken == "" {
 		return errNoToken
 	}
-	a.SoundPath, _ = os.LookupEnv("SOUNDBOARD_SOUND_PATH")
-	if a.SoundPath == "" {
-		a.SoundPath = "./sounds"
+	soundPath, _ := os.LookupEnv("SOUNDBOARD_SOUND_PATH")
+	if soundPath == "" {
+		soundPath = "./sounds"
 	}
-	randomSoundNames, _ := os.LookupEnv("SOUNDBOARD_RANDOM_SOUNDS")
-	if randomSoundNames != "" {
-		a.RandomSounds = strings.Split(randomSoundNames, ",")
+	// load config data from yaml file
+	var err error
+	a.Config, err = LoadConfig(soundPath)
+	if err != nil {
+		return err
 	}
-	a.RandomSoundInterval = 800
-	randomSoundIntv, _ := os.LookupEnv("SOUNDBOARD_RANDOM_SOUND_INTV")
-	if randomSoundIntv != "" {
-		a.RandomSoundInterval, _ = strconv.ParseInt(randomSoundIntv, 10, 64)
-	}
+
 	a.voiceSessions = make([]*VoiceSession, 0)
 
 	// load sounds
@@ -47,7 +41,6 @@ func (a *App) Start() error {
 	}
 
 	// Create a new Discord session using the provided bot token.
-	var err error
 	a.discord, err = discordgo.New("Bot " + botToken)
 	if err != nil {
 		return err

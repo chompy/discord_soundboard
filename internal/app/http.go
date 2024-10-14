@@ -13,10 +13,13 @@ type PageData struct {
 	GuildName   string
 	ChannelName string
 	Sounds      []string
+	Categories  Categories
 }
 
 var httpApp *App = nil
-var mainPageTmpl = template.Must(template.ParseFiles("assets/page.html.tmpl"))
+var mainPageTmpl = template.Must(template.New("page.html.tmpl").Funcs(template.FuncMap{
+	"soundNiceName": NiceName,
+}).ParseFiles("assets/page.html.tmpl"))
 
 func buildPageDataFromRequest(r *http.Request) (PageData, error) {
 	pd := PageData{GuildID: r.URL.Query().Get("guild"), ChannelID: r.URL.Query().Get("channel")}
@@ -37,6 +40,8 @@ func buildPageDataFromRequest(r *http.Request) (PageData, error) {
 	for name := range httpApp.sounds {
 		pd.Sounds = append(pd.Sounds, name)
 	}
+	pd.Categories = httpApp.Config.Categories
+
 	sort.Strings(pd.Sounds)
 
 	return pd, nil

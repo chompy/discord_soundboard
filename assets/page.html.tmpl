@@ -23,9 +23,17 @@
     <a class="pure-button pure-button-primary" id="play-multi" href="#">Play Multiple Sounds</a>
   </div>
   <div class="sounds">
-    {{ range $name := .Sounds }}
-      <a class="pure-button" href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}">{{ $name }}</a>
-    {{ end }}  
+    {{ range $cat := .Categories }}
+    <h2>{{index $cat 1}}</h2>
+
+      {{ range $name := $.Sounds }}
+        {{ if $.Categories.SoundInCategory $name $cat }}
+          <a class="pure-button" href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}">{{ soundNiceName $name }}</a>
+        {{ end }}
+      {{ end }}
+
+    {{ end }}
+
   </div>
 
   <script type="text/javascript">
