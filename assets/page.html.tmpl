@@ -28,7 +28,7 @@
 
       {{ range $name := $.Sounds }}
         {{ if $.Categories.SoundInCategory $name $cat }}
-          <a class="pure-button" href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}">{{ soundNiceName $name }}</a>
+          <a class="pure-button" href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}">{{ soundNiceName $name $cat $.ReplaceWords }}</a>
         {{ end }}
       {{ end }}
 

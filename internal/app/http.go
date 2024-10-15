@@ -8,12 +8,13 @@ import (
 )
 
 type PageData struct {
-	GuildID     string
-	ChannelID   string
-	GuildName   string
-	ChannelName string
-	Sounds      []string
-	Categories  Categories
+	GuildID      string
+	ChannelID    string
+	GuildName    string
+	ChannelName  string
+	Sounds       []string
+	Categories   Categories
+	ReplaceWords map[string]string
 }
 
 var httpApp *App = nil
@@ -41,6 +42,7 @@ func buildPageDataFromRequest(r *http.Request) (PageData, error) {
 		pd.Sounds = append(pd.Sounds, name)
 	}
 	pd.Categories = httpApp.Config.Categories
+	pd.ReplaceWords = httpApp.Config.ReplaceWords
 
 	sort.Strings(pd.Sounds)
 

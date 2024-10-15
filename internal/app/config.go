@@ -12,6 +12,7 @@ type Config struct {
 	RandomSoundInterval int64
 	RandomSounds        []string
 	Categories          Categories
+	ReplaceWords        map[string]string `yaml:"replace_words"`
 }
 
 func LoadConfig(soundPath string) (Config, error) {
