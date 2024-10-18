@@ -2,9 +2,13 @@ package app
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"sort"
+	"strings"
 	"text/template"
+
+	"github.com/gorilla/websocket"
 )
 
 type PageData struct {
@@ -21,6 +25,7 @@ var httpApp *App = nil
 var mainPageTmpl = template.Must(template.New("page.html.tmpl").Funcs(template.FuncMap{
 	"soundNiceName": NiceName,
 }).ParseFiles("assets/page.html.tmpl"))
+var upgrader = websocket.Upgrader{}
 
 func buildPageDataFromRequest(r *http.Request) (PageData, error) {
 	pd := PageData{GuildID: r.URL.Query().Get("guild"), ChannelID: r.URL.Query().Get("channel")}
@@ -133,9 +138,66 @@ func httpReload(w http.ResponseWriter, r *http.Request) {
 	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
 }
 
+func httpWebSocket(w http.ResponseWriter, r *http.Request) {
+	guildID := r.URL.Query().Get("guild")
+	channelID := r.URL.Query().Get("channel")
+	if guildID == "" || channelID == "" {
+		httpError(w, errMissingParam)
+		return
+	}
+	vs := httpApp.VoiceSession(guildID)
+
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+	defer c.Close()
+	for {
+		_, rawMessage, err := c.ReadMessage()
+		if err != nil {
+			log.Printf("> WS ERROR: %s", err.Error())
+			break
+		}
+		messageParts := strings.Split(string(rawMessage), "|")
+		switch messageParts[0] {
+		case "play":
+			{
+				if len(messageParts) < 2 {
+					log.Println("> WS ERROR (play): Malformed message.")
+					break
+				}
+				if err := vs.Play(messageParts[1], httpApp, channelID); err != nil {
+					log.Printf("> WS ERROR (play): %s", err.Error())
+					break
+				}
+				break
+			}
+		case "play-multi":
+			{
+				if len(messageParts) < 2 {
+					log.Println("> WS ERROR (play-multi): Malformed message.")
+					break
+				}
+				if err := vs.PlayMulti(messageParts[1], httpApp, channelID); err != nil {
+					log.Printf("> WS ERROR (play-multi): %s", err.Error())
+					return
+				}
+			}
+		case "stop":
+			{
+				vs.Stop()
+				break
+			}
+		}
+
+	}
+}
+
 func httpStart(app *App) error {
 	httpApp = app
 	http.HandleFunc("/", renderMainPage)
+	http.HandleFunc("/ws", httpWebSocket)
 	http.HandleFunc("/play", httpPlaySound)
 	http.HandleFunc("/playm", httpPlayMultiSound)
 	http.HandleFunc("/stop", httpStopSound)

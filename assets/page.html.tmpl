@@ -19,7 +19,7 @@
 <body>
   <h1>{{ .GuildName }} - Sound Board</h1>
   <div class="options">
-    <a class="pure-button pure-button-primary" href="/stop?guild={{ $.GuildID }}&channel={{ $.ChannelID }}">Stop Current Playback</a>
+    <a class="pure-button pure-button-primary" id="stop">Stop Current Playback</a>
     <a class="pure-button pure-button-primary" id="play-multi" href="#">Play Multiple Sounds</a>
   </div>
   <div class="sounds">
@@ -28,7 +28,7 @@
 
       {{ range $name := $.Sounds }}
         {{ if $.Categories.SoundInCategory $name $cat }}
-          <a class="pure-button" href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}">{{ soundNiceName $name $cat $.ReplaceWords }}</a>
+          <a class="pure-button" href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}" data-sound="{{ $name }}" title="{{ $name }}">{{ soundNiceName $name $cat $.ReplaceWords }}</a>
         {{ end }}
       {{ end }}
 
@@ -37,22 +37,62 @@
   </div>
 
   <script type="text/javascript">
+
+    // WEBSOCKET INIT
+    var ws;
+    window.addEventListener("load", function(evt) {
+      ws = new WebSocket("/ws?guild={{ $.GuildID }}&channel={{ $.ChannelID }}");
+      ws.onopen = function(e) {
+        console.log("> WS connection established.");
+      }
+      ws.onclose = function(e) {
+        console.log("> WS connection closed.");
+      }
+    });
+
+    // SOUNDBOARD BUTTONS
     let buttons = document.getElementsByTagName("a");
     for (let i = 0; i < buttons.length; i++) {
       buttons[i].addEventListener("click", function(e) {
         e.preventDefault(true);
-        fetch(e.target.getAttribute("href"));
+        let sound = e.target.getAttribute("data-sound");
+        if (ws && sound) {
+          console.log("> Play '" + sound + "'.");
+          ws.send("play|" + sound);
+          return;
+        }
       });
     }
+
+    // MULTI SOUND
     document.getElementById("play-multi").addEventListener("click", function(e) {
       e.preventDefault(true);
-      let url = "/playm?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&instructs="
       let instruct = prompt("Play snippets of different sounds back to back.\nUse the format...\n<sound_name>:<start>-<end>,<sound_name>:<start>-<end>,etc\nStart/end are in milliseconds.")
-      if (instruct) {
-        fetch(url + instruct);
+      if (instruct && ws) {
+        console.log("> Play Multi: " + instruct + ".");
+        ws.send("play-multi|" + instruct);
       }
       return false;
     });
+
+    // STOP
+    function stop() {
+      if (ws) {
+        console.log("> Stop sounds.");
+        ws.send("stop");
+      }
+    }
+    document.getElementById("stop").addEventListener("click", function(e) {
+      e.preventDefault(true);
+      stop();
+      return false;
+    });
+    window.addEventListener("keypress", function(e) {
+      if (e.key == "s") {
+        stop();
+      }
+    });
+
   </script>
 
 </body>
