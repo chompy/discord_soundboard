@@ -40,56 +40,68 @@
 
     // WEBSOCKET INIT
     var ws;
-    window.addEventListener("load", function(evt) {
+    const openConnection = (callback) => {
       ws = new WebSocket("/ws?guild={{ $.GuildID }}&channel={{ $.ChannelID }}");
-      ws.onopen = function(e) {
+      ws.onopen = (e) => {
         console.log("> WS connection established.");
+        if (callback) {
+          callback();
+        }
       }
-      ws.onclose = function(e) {
+      ws.onclose = (e) => {
         console.log("> WS connection closed.");
+        ws = null;
       }
-    });
+    };
+
+    const sendCommand = (command) => {
+      const _sendCommand = () => {
+        ws.send(command);
+      };
+      if (!ws) {
+        console.log("(Re)connecting.");
+        openConnection(_sendCommand);
+        return;
+      }
+      _sendCommand();
+    };
 
     // SOUNDBOARD BUTTONS
     let buttons = document.getElementsByTagName("a");
     for (let i = 0; i < buttons.length; i++) {
-      buttons[i].addEventListener("click", function(e) {
+      buttons[i].addEventListener("click", (e) => {
         e.preventDefault(true);
         let sound = e.target.getAttribute("data-sound");
-        if (ws && sound) {
+        if (sound) {
           console.log("> Play '" + sound + "'.");
-          ws.send("play|" + sound);
-          return;
+          sendCommand("play|" + sound);
         }
       });
     }
 
     // MULTI SOUND
-    document.getElementById("play-multi").addEventListener("click", function(e) {
+    document.getElementById("play-multi").addEventListener("click", (e) => {
       e.preventDefault(true);
       let instruct = prompt("Play snippets of different sounds back to back.\nUse the format...\n<sound_name>:<start>-<end>,<sound_name>:<start>-<end>,etc\nStart/end are in milliseconds.")
-      if (instruct && ws) {
+      if (instruct) {
         console.log("> Play Multi: " + instruct + ".");
-        ws.send("play-multi|" + instruct);
+        sendCommand("play-multi|" + instruct);
       }
-      return false;
     });
 
     // STOP
-    function stop() {
-      if (ws) {
-        console.log("> Stop sounds.");
-        ws.send("stop");
-      }
-    }
-    document.getElementById("stop").addEventListener("click", function(e) {
+    const stopSounds = () => {
+      console.log("> Stop sounds.");
+      sendCommand("stop");
+    };
+    document.getElementById("stop").addEventListener("click", (e) => {
       e.preventDefault(true);
-      stop();
+      stopSounds();
       return false;
     });
-    window.addEventListener("keypress", function(e) {
+    window.addEventListener("keypress", (e) => {
       if (e.key == "s") {
-        stop();
+        stopSounds();
       }
     });
 
