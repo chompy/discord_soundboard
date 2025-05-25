@@ -8,7 +8,8 @@ COPY . /app
 WORKDIR /app
 RUN sh compile_server.sh
 
-FROM scratch
+#FROM scratch
+FROM golang:1.22.3-alpine
 COPY --from=node /app/client/app.js /app/client/app.js
 COPY --from=node /app/client/page.html.tmpl /app/client/page.html.tmpl
 COPY --from=golang /app/discord_soundboard_server /app/discord_soundboard_server
