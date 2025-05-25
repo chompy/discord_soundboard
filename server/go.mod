@@ -1,4 +1,4 @@
-module github.com/chompy/discord_soundboard
+module github.com/chompy/discord_soundboard/server
 
 go 1.22.0
 

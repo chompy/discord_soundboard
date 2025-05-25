@@ -1,4 +1,4 @@
-package app
+package main
 
 import (
 	"encoding/json"
@@ -24,7 +24,7 @@ type PageData struct {
 var httpApp *App = nil
 var mainPageTmpl = template.Must(template.New("page.html.tmpl").Funcs(template.FuncMap{
 	"soundNiceName": NiceName,
-}).ParseFiles("assets/page.html.tmpl"))
+}).ParseFiles("client/page.html.tmpl"))
 var upgrader = websocket.Upgrader{}
 
 func buildPageDataFromRequest(r *http.Request) (PageData, error) {
@@ -73,6 +73,10 @@ func httpJsonOutput(w http.ResponseWriter, data interface{}, statusCode int) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	w.Write(jsonData)
+}
+
+func httpServeClientJS(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "client/app.js")
 }
 
 func httpError(w http.ResponseWriter, err error) {
@@ -202,5 +206,6 @@ func httpStart(app *App) error {
 	http.HandleFunc("/playm", httpPlayMultiSound)
 	http.HandleFunc("/stop", httpStopSound)
 	http.HandleFunc("/reload", httpReload)
+	http.HandleFunc("/app.js", httpServeClientJS)
 	return http.ListenAndServe(":8081", nil)
 }

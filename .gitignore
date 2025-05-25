@@ -1,3 +1,7 @@
 token.txt
 /sounds
 *.code-workspace
+/client/*.js
+/_assets
+/test.sh
+/discord_soundboard_server

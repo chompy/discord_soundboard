@@ -5,13 +5,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/chompy/discord_soundboard/internal/app"
 )
 
 func main() {
 
-	app := &app.App{}
+	app := &App{}
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
 	}
