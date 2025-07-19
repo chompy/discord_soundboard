@@ -9,11 +9,11 @@
     html, body { margin: 15px;  background: black; color: #fff; }
     h1 { border-bottom: 1px solid; padding-bottom: 5px; margin-bottom: 10px; }
     .pure-button { background-color: #8c4141; color: #fff; }
-    .sound-list, .sound-category-list { list-style-type: none; padding: 0; }
-    .sound-category { display: inline-block; margin-bottom: 20px; margin-right: 20px; float: left; }
+    .sound-list, .sound-category-list { list-style-type: none; padding: 0; column-count: 2; }
+    .sound-category { margin-top: 10px; margin-bottom: 10px; break-before: always; }
     .sound-category-name { font-size: 22px; font-weight: bold; }
     .sound-category-list { margin-top: 5px; }
-    .sound { min-height: 26px; }
+    .sound { min-height: 28px; }
     .sound-name { display: inline-block; width: 250px;  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sound a { color: #fff; text-decoration: none; }
     .sound .options a { display: inline-block; background-color: #8c4141; padding: 3px 5px; color: #fff; font-size: 14px; text-decoration: none; margin-left: 3px; }
@@ -31,34 +31,33 @@
     {{ range $cat := .Categories }}
     <li class="sound-category">
       <span class="sound-category-name">{{index $cat 1}}</span>
-      <ul class="sound-category-list">
+    </li>
 
-        {{ range $name := $.Sounds }}
-          {{ if $.Categories.SoundInCategory $name $cat }}
-            <li class="sound">
-              <span class="sound-name" title="{{ soundNiceName $name $cat $.ReplaceWords }}">
-                <a
-                  href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
-                  data-sound="{{ $name }}"
-                  data-action="play"
-                >{{ soundNiceName $name $cat $.ReplaceWords }}</a>
-              </span>
-              <span class="options">
-                <a
-                  href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
-                  data-sound="{{ $name }}"
-                  data-action="play"
-                >Play</a>
-                <a 
-                  href="/download?sound={{ $name }}"
-                  data-sound="{{ $name }}"
-                  data-action="preview"
-                >Preview</a>
-              </span>
-            </li>
-          {{ end }}
+      {{ range $name := $.Sounds }}
+        {{ if $.Categories.SoundInCategory $name $cat }}
+          <li class="sound">
+            <span class="sound-name" title="{{ soundNiceName $name $cat $.ReplaceWords }}">
+              <a
+                href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
+                data-sound="{{ $name }}"
+                data-action="play"
+              >{{ soundNiceName $name $cat $.ReplaceWords }}</a>
+            </span>
+            <span class="options">
+              <a
+                href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
+                data-sound="{{ $name }}"
+                data-action="play"
+              >Play</a>
+              <a 
+                href="/download?sound={{ $name }}"
+                data-sound="{{ $name }}"
+                data-action="preview"
+              >Preview</a>
+            </span>
+          </li>
         {{ end }}
-      </ul>
+      {{ end }}
 
     </li>
     
