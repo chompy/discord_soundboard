@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/template"
@@ -142,6 +143,12 @@ func httpReload(w http.ResponseWriter, r *http.Request) {
 	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
 }
 
+func httpDownload(w http.ResponseWriter, r *http.Request) {
+	soundName := r.URL.Query().Get("sound")
+	pathTo := filepath.Join(httpApp.Config.SoundPath, soundName + ".opus")
+	http.ServeFile(w, r, pathTo)
+}
+
 func httpWebSocket(w http.ResponseWriter, r *http.Request) {
 	guildID := r.URL.Query().Get("guild")
 	channelID := r.URL.Query().Get("channel")
@@ -206,6 +213,7 @@ func httpStart(app *App) error {
 	http.HandleFunc("/playm", httpPlayMultiSound)
 	http.HandleFunc("/stop", httpStopSound)
 	http.HandleFunc("/reload", httpReload)
+	http.HandleFunc("/download", httpDownload)
 	http.HandleFunc("/app.js", httpServeClientJS)
 	return http.ListenAndServe(":8081", nil)
 }

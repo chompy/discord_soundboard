@@ -91,6 +91,15 @@ export function init(guildId: string, channelId: string) {
         let sound = (e.target as Element)?.getAttribute('data-sound');
         if (sound) soundboardClient.play(sound);
     };
+    const onPreviewButton = (e: Event) => {
+        e.preventDefault();
+        let sound = (e.target as Element)?.getAttribute('data-sound');
+        if (!sound) {
+            console.error('data-sound attribute missing');
+            return;
+        }
+        new Audio('/download?sound=' + sound).play();
+    };
     const onStopButton = (e: Event) => {
         e.preventDefault();
         soundboardClient.stop();
@@ -104,16 +113,22 @@ export function init(guildId: string, channelId: string) {
     // bind buttons to functions
     let buttons = document.getElementsByTagName('a');
     for (let i = 0; i < buttons.length; i++) {
-        let callbackFunc = onPlayButton;
-        switch (buttons[i].id) {
+        let callbackFunc: ((e: Event) => void) | null = null;
+        switch (buttons[i].getAttribute('data-action')) {
+            case 'play':
+                callbackFunc = onPlayButton;
+                break;
             case 'stop':
                 callbackFunc = onStopButton;
                 break;
             case 'play-multi':
                 callbackFunc = onMultiButton;
                 break;
+            case 'preview':
+                callbackFunc = onPreviewButton;
+                break;
         }
-        buttons[i].addEventListener('click', callbackFunc);
+        if (callbackFunc) buttons[i].addEventListener('click', callbackFunc);
     }
 
     // hook 's' key to stop sounds

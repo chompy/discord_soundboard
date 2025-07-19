@@ -8,10 +8,15 @@
   <style type="text/css">
     html, body { margin: 15px;  background: black; color: #fff; }
     h1 { border-bottom: 1px solid; padding-bottom: 5px; margin-bottom: 10px; }
-    .options { border-bottom: 1px solid; padding-bottom: 10px; }
-    .sounds { margin-top: 10px; }
-    .sounds a { margin-bottom: 10px; }
     .pure-button { background-color: #8c4141; color: #fff; }
+    .sound-list, .sound-category-list { list-style-type: none; padding: 0; }
+    .sound-category { display: inline-block; margin-bottom: 20px; margin-right: 20px; float: left; }
+    .sound-category-name { font-size: 22px; font-weight: bold; }
+    .sound-category-list { margin-top: 5px; }
+    .sound { min-height: 26px; }
+    .sound-name { display: inline-block; width: 250px;  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sound a { color: #fff; text-decoration: none; }
+    .sound .options a { display: inline-block; background-color: #8c4141; padding: 3px 5px; color: #fff; font-size: 14px; text-decoration: none; margin-left: 3px; }
   </style>
   <title>{{ .GuildName }} - Sound Board</title>
 </head>
@@ -19,27 +24,47 @@
 <body>
   <h1>{{ .GuildName }} - Sound Board</h1>
   <div class="options">
-    <a class="pure-button pure-button-primary" id="stop">Stop Current Playback</a>
-    <a class="pure-button pure-button-primary" id="play-multi" href="#">Play Multiple Sounds</a>
+    <a class="pure-button pure-button-primary" id="stop" data-action="stop">Stop Current Playback</a>
+    <a class="pure-button pure-button-primary" id="play-multi" data-action="play-multi">Play Multiple Sounds</a>
   </div>
-  <div class="sounds">
+  <ul class="sound-list">
     {{ range $cat := .Categories }}
-    <h2>{{index $cat 1}}</h2>
+    <li class="sound-category">
+      <span class="sound-category-name">{{index $cat 1}}</span>
+      <ul class="sound-category-list">
 
-      {{ range $name := $.Sounds }}
-        {{ if $.Categories.SoundInCategory $name $cat }}
-          <a
-            class="pure-button"
-            href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
-            data-sound="{{ $name }}"
-            title="{{ $name }}"
-          >{{ soundNiceName $name $cat $.ReplaceWords }}</a>
+        {{ range $name := $.Sounds }}
+          {{ if $.Categories.SoundInCategory $name $cat }}
+            <li class="sound">
+              <span class="sound-name" title="{{ soundNiceName $name $cat $.ReplaceWords }}">
+                <a
+                  href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
+                  data-sound="{{ $name }}"
+                  data-action="play"
+                >{{ soundNiceName $name $cat $.ReplaceWords }}</a>
+              </span>
+              <span class="options">
+                <a
+                  href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
+                  data-sound="{{ $name }}"
+                  data-action="play"
+                >Play</a>
+                <a 
+                  href="/download?sound={{ $name }}"
+                  data-sound="{{ $name }}"
+                  data-action="preview"
+                >Preview</a>
+              </span>
+            </li>
+          {{ end }}
         {{ end }}
-      {{ end }}
+      </ul>
 
+    </li>
+    
     {{ end }}
+  </ul>
 
-  </div>
 
   <script type="text/javascript">
     var exports = {};
