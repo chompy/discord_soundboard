@@ -3,7 +3,7 @@ COPY . /app
 WORKDIR /app
 RUN npm install -g typescript esbuild && sh compile_client_js.sh
 
-FROM golang:1.22.3-alpine as golang
+FROM golang:1.22.3-alpine AS golang
 COPY . /app
 WORKDIR /app
 RUN sh compile_server.sh
