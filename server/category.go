@@ -20,7 +20,7 @@ func (c Categories) SoundInCategory(sound string, cat [2]string) bool {
 }
 
 func (c Categories) IsVisible(cat [2]string, showCats []string) bool {
-	return cat[0][0] != '_' || slices.Contains(showCats, cat[0])
+	return cat[0] == "" || cat[0][0] != '_' || slices.Contains(showCats, cat[0])
 }
 
 func NiceName(sound string, category [2]string, replaceWords map[string]string) string {

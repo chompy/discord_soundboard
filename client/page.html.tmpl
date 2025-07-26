@@ -34,35 +34,32 @@
           <span class="sound-category-name">{{index $cat 1}}</span>
         </li>
 
-          {{ range $name := $.Sounds }}
-            {{ if $.Categories.SoundInCategory $name $cat }}
-              <li class="sound">
-                <span class="sound-name" title="{{ soundNiceName $name $cat $.ReplaceWords }}">
-                  <a
-                    href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
-                    data-sound="{{ $name }}"
-                    data-action="play"
-                  >{{ soundNiceName $name $cat $.ReplaceWords }}</a>
-                </span>
-                <span class="options">
-                  <a
-                    href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
-                    data-sound="{{ $name }}"
-                    data-action="play"
-                  >Play</a>
-                  <a 
-                    href="/download?sound={{ $name }}"
-                    data-sound="{{ $name }}"
-                    data-action="preview"
-                  >Preview</a>
-                </span>
-              </li>
-            {{ end }}
+        {{ range $name := $.Sounds }}
+          {{ if $.Categories.SoundInCategory $name $cat }}
+            <li class="sound">
+              <span class="sound-name" title="{{ soundNiceName $name $cat $.ReplaceWords }}">
+                <a
+                  href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
+                  data-sound="{{ $name }}"
+                  data-action="play"
+                >{{ soundNiceName $name $cat $.ReplaceWords }}</a>
+              </span>
+              <span class="options">
+                <a
+                  href="/play?guild={{ $.GuildID }}&channel={{ $.ChannelID }}&sound={{ $name }}"
+                  data-sound="{{ $name }}"
+                  data-action="play"
+                >Play</a>
+                <a 
+                  href="/download?sound={{ $name }}"
+                  data-sound="{{ $name }}"
+                  data-action="preview"
+                >Preview</a>
+              </span>
+            </li>
           {{ end }}
-
-        </li>
+        {{ end }}
       {{ end }}
-    
     {{ end }}
   </ul>
 
