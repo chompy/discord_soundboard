@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math/rand"
 	"slices"
 	"strconv"
 	"strings"
@@ -12,15 +11,15 @@ import (
 )
 
 type VoiceSession struct {
-	GuildID             string
-	ChannelID           string
-	conn                *discordgo.VoiceConnection
-	buffer              [][]byte
-	lastActivity        time.Time
-	isSpeaking          bool
-	nextSilenceInterupt time.Time
+	GuildID      string
+	ChannelID    string
+	conn         *discordgo.VoiceConnection
+	buffer       [][]byte
+	lastActivity time.Time
+	isSpeaking   bool
 }
 
+// Process is the main processing loop.
 func (v *VoiceSession) Process(app *App) error {
 
 	// sound data in buffer
@@ -52,18 +51,12 @@ func (v *VoiceSession) Process(app *App) error {
 			v.isSpeaking = false
 		}
 
-		if len(app.Config.RandomSounds) > 0 {
-			randomSound := app.Config.RandomSounds[rand.Intn(len(app.Config.RandomSounds))]
-			if time.Now().After(v.nextSilenceInterupt) && app.sounds[randomSound] != nil {
-				log.Println("> Interupt silence!")
-				return v.Play(randomSound, app, v.ChannelID)
-			}
-		}
 	}
 
 	return nil
 }
 
+// End disconnects from Discord, ending the session.
 func (v *VoiceSession) End() error {
 	v.isSpeaking = false
 	v.buffer = make([][]byte, 0)
@@ -75,14 +68,25 @@ func (v *VoiceSession) End() error {
 	return err
 }
 
+// Stop stops all sounds in current Discord channel.
 func (v *VoiceSession) Stop() {
 	log.Printf("> Stop playback in channel '%s'.", v.ChannelID)
 	v.buffer = make([][]byte, 0)
 }
 
+// Play streams sound of given name to given Discord channel.
 func (v *VoiceSession) Play(name string, app *App, channelID string) error {
-	if app.sounds[name] == nil {
-		return errSoundNotFound
+	sound, err := app.LoadSound(name)
+	if err != nil {
+		return err
+	}
+	return v.PlayFromData(sound, app, channelID)
+}
+
+// PlayFromData streams given sound data to given Discord channel.
+func (v *VoiceSession) PlayFromData(sound *SoundData, app *App, channelID string) error {
+	if sound == nil || sound.data == nil || len(sound.data) == 0 {
+		return errInvalidSound
 	}
 	if v.ChannelID != channelID {
 		v.ChannelID = channelID
@@ -91,13 +95,12 @@ func (v *VoiceSession) Play(name string, app *App, channelID string) error {
 			v.conn = nil
 		}
 	}
-
-	log.Printf("> Play '%s' in channel '%s'.", name, v.ChannelID)
-	v.nextSilenceInterupt = time.Now().Add(time.Second * time.Duration((rand.Int63n(app.Config.RandomSoundInterval-60) + 60)))
-	v.buffer = slices.Clone(app.sounds[name])
+	log.Printf("> Play '%s' in channel '%s'.", sound.name, v.ChannelID)
+	v.buffer = slices.Clone(sound.data)
 	return nil
 }
 
+// PlayMulti plays multiple sound clips based on instructions in string.
 func (v *VoiceSession) PlayMulti(instructionList string, app *App, channelID string) error {
 	v.buffer = make([][]byte, 0)
 	if v.ChannelID != channelID {
@@ -114,8 +117,10 @@ func (v *VoiceSession) PlayMulti(instructionList string, app *App, channelID str
 		if name == "" {
 			return errInvalidInstruction
 		}
-		if app.sounds[name] == nil {
-			return errSoundNotFound
+
+		sound, err := app.LoadSound(name)
+		if err != nil {
+			return err
 		}
 
 		start, stop := int64(0), int64(-1)
@@ -126,7 +131,7 @@ func (v *VoiceSession) PlayMulti(instructionList string, app *App, channelID str
 				stop, _ = strconv.ParseInt(durSplit[1], 10, 64)
 			}
 		}
-		nextBuffer := slices.Clone(app.sounds[name])
+		nextBuffer := slices.Clone(sound.data)
 		if start/20 <= int64(len(nextBuffer)) && stop/20 <= int64(len(nextBuffer)) {
 			if start >= 0 && stop <= 0 {
 				nextBuffer = nextBuffer[start/20:]
@@ -137,7 +142,6 @@ func (v *VoiceSession) PlayMulti(instructionList string, app *App, channelID str
 		v.buffer = append(v.buffer, nextBuffer...)
 	}
 	log.Printf("> Play multi-sound in channel '%s'. (%s)", v.ChannelID, instructionList)
-	v.nextSilenceInterupt = time.Now().Add(time.Second * time.Duration((rand.Int63n(app.Config.RandomSoundInterval-60) + 60)))
 	return nil
 }
 

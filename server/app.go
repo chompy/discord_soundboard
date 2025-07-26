@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -11,9 +10,9 @@ import (
 
 type App struct {
 	Config        Config
-	sounds        map[string][][]byte
 	discord       *discordgo.Session
 	voiceSessions []*VoiceSession
+	soundCache    []SoundData
 }
 
 func (a *App) Start() error {
@@ -33,14 +32,11 @@ func (a *App) Start() error {
 		return err
 	}
 
+	// init
+	a.clearSoundCache()
 	a.voiceSessions = make([]*VoiceSession, 0)
 
-	// load sounds
-	if err := a.loadAllSounds(); err != nil {
-		return err
-	}
-
-	// Create a new Discord session using the provided bot token.
+	// create a new Discord session using the provided bot token
 	a.discord, err = discordgo.New("Bot " + botToken)
 	if err != nil {
 		return err
@@ -68,18 +64,16 @@ func (a *App) VoiceSession(guildID string) *VoiceSession {
 }
 
 func (a *App) onDiscordReady(s *discordgo.Session, event *discordgo.Ready) {
-	s.UpdateGameStatus(0, fmt.Sprintf("%d wiener loving sounds", len(a.sounds)))
+	s.UpdateGameStatus(0, "wiener sounds.")
 	go httpStart(a)
 	go a.appLoop()
 }
 
 func (a *App) onDiscordVoiceStateUpdate(s *discordgo.Session, event *discordgo.VoiceStateUpdate) {
-
 	// only want to track user's leaving
 	if event.BeforeUpdate == nil {
 		return
 	}
-
 	// determine if event is in channel where bot resides
 	for _, vs := range a.voiceSessions {
 		if vs.ChannelID == event.BeforeUpdate.ChannelID {
@@ -92,7 +86,6 @@ func (a *App) onDiscordVoiceStateUpdate(s *discordgo.Session, event *discordgo.V
 			}
 		}
 	}
-
 }
 
 func (a *App) appLoop() {

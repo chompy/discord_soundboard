@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"path"
 
@@ -8,27 +9,22 @@ import (
 )
 
 type Config struct {
-	SoundPath           string
-	RandomSoundInterval int64
-	RandomSounds        []string
-	Categories          Categories
-	ReplaceWords        map[string]string `yaml:"replace_words"`
+	SoundPath    string
+	Categories   Categories
+	ReplaceWords map[string]string `yaml:"replace_words"`
+	MaxMemory    int               `yaml:"max_memory"`
 }
 
 func LoadConfig(soundPath string) (Config, error) {
+	out := Config{SoundPath: soundPath, MaxMemory: 10485760}
 	pathTo := path.Join(soundPath, "config.yaml")
 	configBytes, err := os.ReadFile(pathTo)
 	if err != nil {
-		return Config{}, err
+		if os.IsNotExist(err) {
+			log.Printf("> WARNING: Config at %s not found.", pathTo)
+			return out, nil
+		}
+		return out, err
 	}
-	out := Config{}
-	err = yaml.Unmarshal(configBytes, &out)
-	if err != nil {
-		return Config{}, err
-	}
-	out.SoundPath = soundPath
-	if out.RandomSoundInterval <= 0 {
-		out.RandomSoundInterval = 800
-	}
-	return out, nil
+	return out, yaml.Unmarshal(configBytes, &out)
 }
