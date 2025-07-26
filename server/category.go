@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -16,6 +17,10 @@ func (c Categories) SoundInCategory(sound string, cat [2]string) bool {
 		}
 	}
 	return false
+}
+
+func (c Categories) IsVisible(cat [2]string, showCats []string) bool {
+	return cat[0][0] != '_' || slices.Contains(showCats, cat[0])
 }
 
 func NiceName(sound string, category [2]string, replaceWords map[string]string) string {

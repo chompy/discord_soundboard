@@ -20,6 +20,7 @@ type PageData struct {
 	Sounds       []string
 	Categories   Categories
 	ReplaceWords map[string]string
+	ShowHidden   []string
 }
 
 var httpApp *App = nil
@@ -29,7 +30,7 @@ var mainPageTmpl = template.Must(template.New("page.html.tmpl").Funcs(template.F
 var upgrader = websocket.Upgrader{}
 
 func buildPageDataFromRequest(r *http.Request) (PageData, error) {
-	pd := PageData{GuildID: r.URL.Query().Get("guild"), ChannelID: r.URL.Query().Get("channel")}
+	pd := PageData{GuildID: r.URL.Query().Get("guild"), ChannelID: r.URL.Query().Get("channel"), ShowHidden: strings.Split(r.URL.Query().Get("show"), ",")}
 	if pd.GuildID == "" || pd.ChannelID == "" {
 		return pd, errMissingParam
 	}
@@ -100,7 +101,7 @@ func httpPlaySound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
+	httpJsonOutput(w, map[string]any{"status": http.StatusOK}, http.StatusOK)
 }
 
 func httpPlayMultiSound(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +119,7 @@ func httpPlayMultiSound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
+	httpJsonOutput(w, map[string]any{"status": http.StatusOK}, http.StatusOK)
 }
 
 func httpStopSound(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +133,7 @@ func httpStopSound(w http.ResponseWriter, r *http.Request) {
 	vs := httpApp.VoiceSession(guildID)
 	vs.Stop()
 
-	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
+	httpJsonOutput(w, map[string]any{"status": http.StatusOK}, http.StatusOK)
 }
 
 func httpReload(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +141,7 @@ func httpReload(w http.ResponseWriter, r *http.Request) {
 		httpError(w, err)
 		return
 	}
-	httpJsonOutput(w, map[string]interface{}{"status": http.StatusOK}, http.StatusOK)
+	httpJsonOutput(w, map[string]any{"status": http.StatusOK}, http.StatusOK)
 }
 
 func httpDownload(w http.ResponseWriter, r *http.Request) {
