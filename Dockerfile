@@ -1,7 +1,7 @@
 FROM node:alpine AS node
 COPY . /app
 WORKDIR /app
-RUN npm install -g typescript esbuild && sh compile_client_js.sh
+RUN cd client && npm i -g typescript esbuild && npm i && cd /app && sh compile_client_js.sh
 
 FROM golang:1.22.3-alpine AS golang
 COPY . /app
