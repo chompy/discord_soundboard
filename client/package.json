@@ -1,0 +1,13 @@
+{
+    "dependencies": {},
+    "devDependencies": {
+        "@types/av": "^0.4.4",
+        "@types/node": "^24.1.0",
+        "babel-eslint": "^10.1.0",
+        "babelify": "^10.0.0",
+        "browserify": "^17.0.1",
+        "eslint": "^9.32.0",
+        "esmify": "^2.1.1",
+        "tsify": "^5.0.4"
+    }
+}

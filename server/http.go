@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -137,6 +138,28 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, pathTo)
 }
 
+func httpUpload(w http.ResponseWriter, r *http.Request) {
+	guildID := r.URL.Query().Get("guild")
+	channelID := r.URL.Query().Get("channel")
+	if guildID == "" || channelID == "" {
+		httpError(w, errMissingParam)
+		return
+	}
+	sound, err := loadOpusFramesFromReader(r.Body, fmt.Sprintf("upload-via-%s", r.RemoteAddr))
+	if err != nil {
+		log.Printf("> UPLOAD ERROR: %s", err.Error())
+		httpError(w, errInvalidSound)
+		return
+	}
+	vs := httpApp.VoiceSession(guildID)
+	if err := vs.PlayFromData(&sound, httpApp, channelID); err != nil {
+		log.Printf("> UPLOAD ERROR: %s", err.Error())
+		httpError(w, errInvalidSound)
+		return
+	}
+	httpJsonOutput(w, map[string]any{"status": http.StatusOK}, http.StatusOK)
+}
+
 func httpWebSocket(w http.ResponseWriter, r *http.Request) {
 	guildID := r.URL.Query().Get("guild")
 	channelID := r.URL.Query().Get("channel")
@@ -201,6 +224,7 @@ func httpStart(app *App) error {
 	http.HandleFunc("/playm", httpPlayMultiSound)
 	http.HandleFunc("/stop", httpStopSound)
 	http.HandleFunc("/download", httpDownload)
+	http.HandleFunc("/upload", httpUpload)
 	http.HandleFunc("/app.js", httpServeClientJS)
 	return http.ListenAndServe(":8081", nil)
 }

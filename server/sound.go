@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"io"
 	"log"
 	"os"
@@ -16,8 +17,38 @@ type SoundData struct {
 	size int
 }
 
-// loadSoundFromReader attempts to load an encoded sound from reader.
-func loadSoundFromReader(sound io.Reader, name string) (SoundData, error) {
+// loadOpusFramesFromReader loads Opus frames from reader
+func loadOpusFramesFromReader(sound io.Reader, name string) (SoundData, error) {
+	log.Printf("> Load sound '%s' from Opus frame", name)
+	out := SoundData{name: name, data: make([][]byte, 0)}
+	frameSizeBytes := make([]byte, 2)
+	frameSize := uint16(0)
+	for {
+		_, err := io.ReadAtLeast(sound, frameSizeBytes, 2)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return SoundData{}, err
+		}
+		frameSize = binary.LittleEndian.Uint16(frameSizeBytes)
+		frameBuffer := make([]byte, frameSize)
+		_, err = io.ReadAtLeast(sound, frameBuffer, int(frameSize))
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return SoundData{}, err
+		}
+		out.data = append(out.data, frameBuffer)
+		out.size += int(frameSize) + 2
+	}
+	log.Printf("> Loaded sound '%s' (%d bytes).", out.name, out.size)
+	return out, nil
+}
+
+// loadOpusFromReader loads Opus frames from OGG Opus file
+func loadOpusFromReader(sound io.Reader, name string) (SoundData, error) {
 	log.Printf("> Load sound '%s'", name)
 	oggDecoder := ogg.NewDecoder(sound)
 	oggPacketDecoder := ogg.NewPacketDecoder(oggDecoder)
@@ -25,15 +56,15 @@ func loadSoundFromReader(sound io.Reader, name string) (SoundData, error) {
 	out := SoundData{name: name, data: make([][]byte, 0), size: 0}
 	for {
 		packet, _, err := oggPacketDecoder.Decode()
-		if skipPackets > 0 {
-			skipPackets--
-			continue
-		}
 		if err != nil {
 			if err != io.EOF {
 				return out, err
 			}
 			break
+		}
+		if skipPackets > 0 {
+			skipPackets--
+			continue
 		}
 		out.size += len(packet)
 		out.data = append(out.data, packet)
@@ -55,7 +86,7 @@ func (a *App) LoadSound(name string) (*SoundData, error) {
 		return nil, err
 	}
 	defer file.Close()
-	sound, err := loadSoundFromReader(file, name)
+	sound, err := loadOpusFromReader(file, name)
 	if err != nil {
 		return nil, err
 	}

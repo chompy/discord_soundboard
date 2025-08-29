@@ -17,15 +17,24 @@
     .sound-name { display: inline-block; width: 250px;  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sound a { color: #fff; text-decoration: none; }
     .sound .options a { display: inline-block; background-color: #8c4141; padding: 3px 5px; color: #fff; font-size: 14px; text-decoration: none; margin-left: 3px; vertical-align: 3px; }
+    form[name=upload] { display: none; }
   </style>
   <title>{{ .GuildName }} - Sound Board</title>
 </head>
 
 <body>
   <h1>{{ .GuildName }} - Sound Board</h1>
+
+  <div class="upload">
+
+  <form name="upload" action="/upload">
+    <input type="file" id="upload" name="sound" />
+  </form>
+
   <div class="options">
-    <a class="pure-button pure-button-primary" id="stop" data-action="stop">Stop Current Playback</a>
-    <a class="pure-button pure-button-primary" id="play-multi" data-action="play-multi">Play Multiple Sounds</a>
+    <a class="pure-button pure-button-primary" id="stop" data-action="stop">Stop All</a>
+    <a class="pure-button pure-button-primary" id="play-file" data-action="play-file">Play From File</a>
+    <a class="pure-button pure-button-primary" id="play-multi" data-action="play-multi">Play Multiple</a>
   </div>
   <ul class="sound-list">
     {{ range $cat := .Categories }}

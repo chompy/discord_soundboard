@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "module": "nodenext",
+        "noImplicitAny": false,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "sourceMap": true,
+        "lib": ["es2018", "dom"],
+        "moduleResolution": "nodenext",
+        "esModuleInterop": true
+    },
+    "include": ["*.ts"],
+    "exclude": ["**/*.spec.ts"]
+}
