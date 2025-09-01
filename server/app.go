@@ -1,106 +1,25 @@
 package main
 
-import (
-	"log"
-	"os"
-	"time"
-
-	"github.com/bwmarrin/discordgo"
-)
-
 type App struct {
-	Config        Config
-	discord       *discordgo.Session
-	voiceSessions []*VoiceSession
-	soundCache    []SoundData
+	Discord *Discord
 }
 
-func (a *App) Start() error {
-	// load config data from env vars
-	botToken, _ := os.LookupEnv("SOUNDBOARD_BOT_TOKEN")
-	if botToken == "" {
-		return errNoToken
-	}
-	soundPath, _ := os.LookupEnv("SOUNDBOARD_SOUND_PATH")
-	if soundPath == "" {
-		soundPath = "./sounds"
-	}
-	// load config data from yaml file
-	var err error
-	a.Config, err = LoadConfig(soundPath)
-	if err != nil {
-		return err
+func Run() (*App, error) {
+
+	if err := databaseInit(); err != nil {
+		return nil, err
 	}
 
-	// init
-	a.clearSoundCache()
-	a.voiceSessions = make([]*VoiceSession, 0)
-
-	// create a new Discord session using the provided bot token
-	a.discord, err = discordgo.New("Bot " + botToken)
+	discord, err := NewDiscord()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	a.discord.StateEnabled = true
-	a.discord.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildVoiceStates | discordgo.IntentGuildMembers
-	a.discord.AddHandler(a.onDiscordReady)
-	a.discord.AddHandler(a.onDiscordVoiceStateUpdate)
-	return a.discord.Open()
+
+	app := &App{Discord: discord}
+	go RunWebServer(app)
+	return app, nil
 }
 
 func (a *App) Close() error {
-	return a.discord.Close()
-}
-
-func (a *App) VoiceSession(guildID string) *VoiceSession {
-	for _, vs := range a.voiceSessions {
-		if vs.GuildID == guildID {
-			return vs
-		}
-	}
-	vs := &VoiceSession{GuildID: guildID, buffer: make([][]byte, 0), lastActivity: time.Now()}
-	a.voiceSessions = append(a.voiceSessions, vs)
-	return vs
-}
-
-func (a *App) onDiscordReady(s *discordgo.Session, event *discordgo.Ready) {
-	s.UpdateGameStatus(0, "wiener sounds.")
-	go httpStart(a)
-	go a.appLoop()
-}
-
-func (a *App) onDiscordVoiceStateUpdate(s *discordgo.Session, event *discordgo.VoiceStateUpdate) {
-	// only want to track user's leaving
-	if event.BeforeUpdate == nil {
-		return
-	}
-	// determine if event is in channel where bot resides
-	for _, vs := range a.voiceSessions {
-		if vs.ChannelID == event.BeforeUpdate.ChannelID {
-			if !vs.HasUsers(s) {
-				log.Printf("> Leaving channel '%s', no users left.", vs.ChannelID)
-				if err := vs.End(); err != nil {
-					log.Println("> WARNING: Failed to end voice session: ", err)
-					return
-				}
-			}
-		}
-	}
-}
-
-func (a *App) appLoop() {
-	for {
-		hasPlaying := false
-		for _, vs := range a.voiceSessions {
-			if vs != nil {
-				vs.Process(a)
-				if vs.IsPlaying() {
-					hasPlaying = true
-				}
-			}
-		}
-		if !hasPlaying {
-			time.Sleep(time.Millisecond * 5)
-		}
-	}
+	return a.Discord.Close()
 }

@@ -1,8 +1,10 @@
-token.txt
-/sounds
 *.code-workspace
-/client/*.js
 /_assets
+/data
 /test.sh
 /discord_soundboard_server
 node_modules
+.env.local
+
+web/*.js
+web/*.js.map

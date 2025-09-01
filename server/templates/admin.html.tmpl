@@ -1,0 +1,45 @@
+{{ define "body" }}
+<div id="admin">
+
+    <input id="upload-sound" type="file" name="sound" accept=".mp3,.ogg,.opus,.flac,.wav" />
+
+    <div id="admin-options" class="options">
+        <button id="btn-add-category" class="pure-button pure-button-primary">Add Category</button>
+        <button id="btn-add-sound" class="pure-button pure-button-primary">Add Sound</button>
+    </div>
+
+
+
+    <div id="admin-sound-list">
+
+    </div>
+</div>
+{{ end }}
+
+
+{{ define "modal" }}
+<div id="modal-mod-sound" class="modal pure-form pure-form-stacked">
+    <h2>Edit Sound</h2>
+
+    <label for="mod-sound-category">Category</label>      
+    <select id="mod-sound-category" name="category"></select>
+
+    <label for="mod-sound-name">Name</label>      
+    <input id="mod-sound-name" type="text" name="name" />
+
+    <button id="mod-sound-btn-save" class="pure-button pure-button-primary">Save</button>
+    <button id="mod-sound-btn-delete" class="pure-button">Delete</button>
+    <button class="btn-modal-close pure-button">Cancel</button>
+</div>
+
+<div id="modal-alert" class="modal">
+    <h2>Error</h2>
+    <p>An error has occurred</p>
+    <button class="btn-modal-close pure-button">Cancel</button>
+</div>
+{{ end }}
+
+
+{{ define "scripts" }}
+<script type="text/javascript" src="/static/admin.js"></script>
+{{ end }}
