@@ -79,6 +79,25 @@ func databaseDeleteCategoryByID(db *sql.DB, ID int64) error {
 	return err
 }
 
+func databaseSortCategories(db *sql.DB, guildID string, IDs ...int64) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt := `UPDATE categories SET sort = ? WHERE guild_id = ?`
+	if _, err := tx.Exec(stmt, 9999, guildID); err != nil {
+		return err
+	}
+	for index, ID := range IDs {
+		stmt = `UPDATE categories SET sort = ? WHERE id = ? AND guild_id = ?`
+		if _, err := tx.Exec(stmt, index, ID, guildID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 func (c *Category) Save(db *sql.DB) error {
 	c.Updated = time.Now()
 	if c.ID > 0 {

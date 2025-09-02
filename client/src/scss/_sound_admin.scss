@@ -1,36 +1,9 @@
+@use 'vars';
+
 .sound-admin {
     input[type='file'] {
         display: none;
     }
-
-    ul {
-        list-style-type: none;
-        padding: 0;
-        margin: 0;
-
-        li {
-            padding: 10px;
-            margin: 5px 15px 5px 0px;
-            background-color: blue;
-            cursor: pointer;
-
-            span {
-                display: inline-block;
-                width: 70%;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-
-            a {
-                text-decoration: none;
-                display: block;
-                float: right;
-                margin-left: 3px;
-            }
-        }
-    }
-
     .categories,
     .sounds {
         display: inline-block;
@@ -38,8 +11,44 @@
         width: 250px;
         margin-bottom: 15px;
     }
+    .categories {
+        border-right: 1px solid vars.$foreground-color;
+        margin-right: 10px;
+        height: 500px;
+        overflow-x: hidden;
+        overflow-y: scroll;
+    }
+    .section-title {
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+}
 
-    .categories li.active {
-        background-color: green;
+.sound-admin-option {
+    padding: 10px;
+    margin: 5px 15px 5px 0px;
+    background-color: vars.$primary-color;
+    cursor: pointer;
+    user-select: none;
+
+    span {
+        display: inline-block;
+        width: 70%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    a {
+        text-decoration: none;
+        display: block;
+        float: right;
+        margin-left: 3px;
+    }
+    &.active {
+        border: 2px solid vars.$foreground-color;
+        border-right: 10px solid vars.$foreground-color;
     }
 }

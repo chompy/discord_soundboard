@@ -8,20 +8,16 @@ import (
 	"net/http"
 )
 
-func httpApiInit(w http.ResponseWriter, r *http.Request) (*sql.DB, User) {
-	db, err := databaseOpen()
-	if err != nil {
-		httpApiError(w, err)
-		return nil, User{}
-	}
-	user, err := checkUser(db, r)
-	if err != nil {
-		db.Close()
-		httpApiError(w, err)
-		return nil, User{}
-	}
-	return db, user
+type ApiRequest struct {
+	ID   int
+	App  *App
+	R    *http.Request
+	W    http.ResponseWriter
+	User User
+	DB   *sql.DB
 }
+
+var requestIdCounter = 0
 
 func httpApiJsonWrite(w http.ResponseWriter, data any, statusCode int) {
 	w.Header().Add("Content-Type", "application/json")
@@ -43,99 +39,96 @@ func httpApiJsonRead(r *http.Request, data any) error {
 	return json.Unmarshal(rawJson, &data)
 }
 
-func httpApiError(w http.ResponseWriter, err error) {
-	log.Println("> ERROR: ", err)
-	httpApiJsonWrite(w, map[string]any{"success": false, "error": err.Error()}, http.StatusInternalServerError)
-}
-
-func httpApiSuccess(w http.ResponseWriter) {
-	httpApiJsonWrite(w, map[string]any{"success": true}, http.StatusOK)
-}
-
-func httpApiMe(app *App) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		db, user := httpApiInit(w, r)
-		if db == nil {
-			return
-		}
-		defer db.Close()
-
-		httpApiJsonWrite(w, map[string]any{"success": true, "user": user}, http.StatusOK)
+func httpApiError(r *ApiRequest, err error, userErr error) {
+	if userErr == nil {
+		userErr = errUnknown
 	}
+	statusCode := errHttpStatusCodeMap[userErr]
+	if statusCode == 0 {
+		statusCode = 500
+	}
+	log.Printf("> R:%05d | %d - %s %s | ERROR: %s", r.ID, statusCode, r.R.Method, r.R.URL.Path, err)
+	httpApiJsonWrite(r.W, map[string]any{"success": false, "error": userErr.Error(), "isLoggedIn": r.User.ID != ""}, statusCode)
 }
 
-func httpApiListGuilds(app *App) func(w http.ResponseWriter, r *http.Request) {
+func handleHttpApi(app *App, callback func(r *ApiRequest) (any, error, error)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		db, user := httpApiInit(w, r)
-		if db == nil {
-			return
-		}
-		defer db.Close()
+		requestIdCounter++
+		apiReq := ApiRequest{ID: requestIdCounter, App: app, W: w, R: r}
 
-		userGuilds, err := app.Discord.UserAvailableGuilds(db, user.ID)
+		//log.Println("> R:%05d | %s %s", out.ID, r.Method, r.URL.Path)
+
+		var err error
+		apiReq.DB, err = databaseOpen()
 		if err != nil {
-			httpApiError(w, err)
+			httpApiError(&apiReq, err, errDatabaseOpen)
+			return
+		}
+		defer apiReq.DB.Close()
+
+		apiReq.User, err = checkUser(apiReq.DB, r)
+		if err != nil {
+			httpApiError(&apiReq, err, errNotAuthenticated)
 			return
 		}
 
-		httpApiJsonWrite(w, map[string]any{"success": true, "guilds": userGuilds}, http.StatusOK)
+		resp, err, userErr := callback(&apiReq)
+		if err != nil {
+			httpApiError(&apiReq, err, userErr)
+		}
+
+		if resp == nil {
+			resp = map[string]any{"success": true}
+		}
+		httpApiJsonWrite(w, resp, http.StatusOK)
+		log.Printf("> R:%05d | 200 - %s %s | -", apiReq.ID, r.Method, r.URL.Path)
 	}
 }
 
-func httpApiListGuildCategories(app *App) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		guildId := r.URL.Query().Get("guild")
-		if guildId == "" {
-			httpApiError(w, errMissingParam)
-			return
-		}
-
-		db, user := httpApiInit(w, r)
-		if db == nil {
-			return
-		}
-		defer db.Close()
-
-		if err := checkUserGuild(db, user.ID, guildId); err != nil {
-			httpApiError(w, err)
-			return
-		}
-
-		categories, err := databaseFetchCategoriesByGuildID(db, guildId)
-		if err != nil {
-			httpApiError(w, err)
-			return
-		}
-		httpApiJsonWrite(w, map[string]any{"success": true, "categories": categories}, http.StatusOK)
-	}
+func httpApiMe(r *ApiRequest) (any, error, error) {
+	return map[string]any{"success": true, "user": r.User}, nil, nil
 }
 
-func httpApiListGuildSounds(app *App) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		guildId := r.URL.Query().Get("guild")
-		if guildId == "" {
-			httpApiError(w, errMissingParam)
-			return
-		}
-
-		db, user := httpApiInit(w, r)
-		if db == nil {
-			return
-		}
-		defer db.Close()
-
-		if err := checkUserGuild(db, user.ID, guildId); err != nil {
-			httpApiError(w, err)
-			return
-		}
-
-		sounds, err := databaseFetchSoundsByGuildID(db, guildId)
-		if err != nil {
-			httpApiError(w, err)
-			return
-		}
-		httpApiJsonWrite(w, map[string]any{"success": true, "sounds": sounds}, http.StatusOK)
+func httpApiListGuilds(r *ApiRequest) (any, error, error) {
+	userGuilds, err := r.App.Discord.UserAvailableGuilds(r.DB, r.User.ID)
+	if err != nil {
+		return nil, err, errDiscordApi
 	}
+	return map[string]any{"success": true, "guilds": userGuilds}, nil, nil
+}
+
+func httpApiListGuildCategories(r *ApiRequest) (any, error, error) {
+	guildId := r.R.URL.Query().Get("guild")
+	if guildId == "" {
+		return nil, errMissingParam, errMissingParam
+	}
+	if err := checkUserGuild(r.DB, r.User.ID, guildId); err != nil {
+		return nil, err, errNotAuthorized
+	}
+
+	categories, err := databaseFetchCategoriesByGuildID(r.DB, guildId)
+	if err != nil {
+		return nil, err, errDatabaseRead
+	}
+
+	return map[string]any{"success": true, "categories": categories}, nil, nil
+}
+
+func httpApiListGuildSounds(r *ApiRequest) (any, error, error) {
+	guildId := r.R.URL.Query().Get("guild")
+	if guildId == "" {
+		return nil, errMissingParam, errMissingParam
+	}
+
+	if err := checkUserGuild(r.DB, r.User.ID, guildId); err != nil {
+		return nil, err, errNotAuthorized
+	}
+
+	sounds, err := databaseFetchSoundsByGuildID(r.DB, guildId)
+	if err != nil {
+		return nil, err, errDatabaseRead
+	}
+	return map[string]any{"success": true, "sounds": sounds}, nil, nil
 }
 
 type httpDeleteCategory struct {
@@ -153,108 +146,101 @@ type httpUpdateCategory struct {
 	httpCreateCategory
 }
 
-func httpApiModCategory(app *App) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
+func httpApiModCategory(r *ApiRequest) (any, error, error) {
+	switch r.R.Method {
+	case http.MethodPost:
+		{
+			params := httpCreateCategory{}
+			if err := httpApiJsonRead(r.R, &params); err != nil {
+				return nil, err, errInvalidParam
+			}
 
-		db, user := httpApiInit(w, r)
-		if db == nil {
-			return
+			if params.Name == "" || params.GuildID == "" {
+				return nil, errMissingParam, errMissingParam
+			}
+
+			if err := checkUserGuild(r.DB, r.User.ID, params.GuildID); err != nil {
+				return nil, err, errNotAuthorized
+			}
+
+			category := Category{Name: params.Name, GuildID: params.GuildID, Sort: params.Sort}
+			if err := category.Save(r.DB); err != nil {
+				return nil, err, errDatabaseWrite
+			}
+
+			return map[string]any{"success": true, "category": category}, nil, nil
 		}
-		defer db.Close()
-
-		switch r.Method {
-		case http.MethodPost:
-			{
-				params := httpCreateCategory{}
-				if err := httpApiJsonRead(r, &params); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				if params.Name == "" || params.GuildID == "" {
-					httpApiError(w, errMissingParam)
-					return
-				}
-
-				if err := checkUserGuild(db, user.ID, params.GuildID); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				category := Category{Name: params.Name, GuildID: params.GuildID, Sort: params.Sort}
-				if err := category.Save(db); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				httpApiJsonWrite(w, map[string]any{"success": true, "category": category}, http.StatusOK)
-				return
+	case http.MethodPut:
+		{
+			params := httpUpdateCategory{}
+			if err := httpApiJsonRead(r.R, &params); err != nil {
+				return nil, err, errInvalidParam
 			}
-		case http.MethodPut:
-			{
-				params := httpUpdateCategory{}
-				if err := httpApiJsonRead(r, &params); err != nil {
-					httpApiError(w, err)
-					return
-				}
 
-				if params.ID == 0 || params.Name == "" || params.GuildID == "" {
-					httpApiError(w, errMissingParam)
-					return
-				}
-
-				if err := checkUserGuild(db, user.ID, params.GuildID); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				category, err := databaseFetchCategoryByID(db, params.ID)
-				if err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				category.Name = params.Name
-				category.GuildID = params.GuildID
-				category.Sort = params.Sort
-				if err := category.Save(db); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				httpApiJsonWrite(w, map[string]any{"success": true, "category": category}, http.StatusOK)
-				return
+			if params.ID == 0 || params.Name == "" || params.GuildID == "" {
+				return nil, errMissingParam, errMissingParam
 			}
-		case http.MethodDelete:
-			{
-				params := httpDeleteCategory{}
-				if err := httpApiJsonRead(r, &params); err != nil {
-					httpApiError(w, err)
-					return
-				}
 
-				category, err := databaseFetchCategoryByID(db, params.ID)
-				if err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				if err := checkUserGuild(db, user.ID, category.GuildID); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				if err := category.Delete(db); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				httpApiSuccess(w)
-				return
+			if err := checkUserGuild(r.DB, r.User.ID, params.GuildID); err != nil {
+				return nil, err, errNotAuthorized
 			}
+
+			category, err := databaseFetchCategoryByID(r.DB, params.ID)
+			if err != nil {
+				return nil, err, errDatabaseRead
+			}
+
+			category.Name = params.Name
+			category.GuildID = params.GuildID
+			category.Sort = params.Sort
+			if err := category.Save(r.DB); err != nil {
+				return nil, err, errDatabaseWrite
+			}
+
+			return map[string]any{"success": true, "category": category}, nil, nil
 		}
-		httpApiError(w, errInvalidMethod)
+	case http.MethodDelete:
+		{
+			params := httpDeleteCategory{}
+			if err := httpApiJsonRead(r.R, &params); err != nil {
+				return nil, err, errInvalidParam
+			}
+
+			category, err := databaseFetchCategoryByID(r.DB, params.ID)
+			if err != nil {
+				return nil, err, errDatabaseRead
+			}
+
+			if err := checkUserGuild(r.DB, r.User.ID, category.GuildID); err != nil {
+				return nil, err, errNotAuthorized
+			}
+
+			if err := category.Delete(r.DB); err != nil {
+				return nil, err, errDatabaseWrite
+			}
+
+			return nil, nil, nil
+		}
 	}
+	return nil, errInvalidMethod, errInvalidMethod
+}
+
+type httpSortCategory struct {
+	GuildID string  `json:"guildId"`
+	IDs     []int64 `json:"ids"`
+}
+
+func httpApiSortCategory(r *ApiRequest) (any, error, error) {
+	params := httpSortCategory{}
+	if err := httpApiJsonRead(r.R, &params); err != nil {
+		return nil, err, errInvalidParam
+	}
+
+	if err := databaseSortCategories(r.DB, params.GuildID, params.IDs...); err != nil {
+		return nil, err, errDatabaseWrite
+	}
+
+	return nil, nil, nil
 }
 
 type httpCreateSound struct {
@@ -273,148 +259,182 @@ type httpUpdateSound struct {
 	httpCreateSound
 }
 
-func httpApiModSound(app *App) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
+func httpApiModSound(r *ApiRequest) (any, error, error) {
+	switch r.R.Method {
+	case http.MethodPost:
+		{
+			params := httpCreateSound{}
+			if err := httpApiJsonRead(r.R, &params); err != nil {
+				return nil, err, errInvalidParam
+			}
 
-		db, user := httpApiInit(w, r)
-		if db == nil {
-			return
+			if params.Name == "" || params.Hash == "" || params.CategoryID == 0 {
+				return nil, errMissingParam, errMissingParam
+			}
+
+			category, err := databaseFetchCategoryByID(r.DB, params.CategoryID)
+			if err != nil {
+				return nil, err, errDatabaseRead
+
+			}
+
+			if err := checkUserGuild(r.DB, r.User.ID, category.GuildID); err != nil {
+				return nil, err, errNotAuthorized
+			}
+
+			sound := Sound{Name: params.Name, Hash: params.Hash, CategoryID: params.CategoryID, Sort: params.Sort}
+			if err := sound.Save(r.DB); err != nil {
+				return nil, err, errDatabaseWrite
+			}
+
+			return map[string]any{"success": true, "sound": sound}, nil, nil
 		}
-		defer db.Close()
-
-		switch r.Method {
-		case http.MethodPost:
-			{
-				params := httpCreateSound{}
-				if err := httpApiJsonRead(r, &params); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				if params.Name == "" || params.Hash == "" || params.CategoryID == 0 {
-					httpApiError(w, errMissingParam)
-					return
-				}
-
-				category, err := databaseFetchCategoryByID(db, params.CategoryID)
-				if err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				if err := checkUserGuild(db, user.ID, category.GuildID); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				sound := Sound{Name: params.Name, Hash: params.Hash, CategoryID: params.CategoryID, Sort: params.Sort}
-				if err := sound.Save(db); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				httpApiJsonWrite(w, map[string]any{"success": true, "sound": sound}, http.StatusOK)
-				return
+	case http.MethodPut:
+		{
+			params := httpUpdateSound{}
+			if err := httpApiJsonRead(r.R, &params); err != nil {
+				return nil, err, errInvalidParam
 			}
-		case http.MethodPut:
-			{
-				params := httpUpdateSound{}
-				if err := httpApiJsonRead(r, &params); err != nil {
-					httpApiError(w, err)
-					return
-				}
 
-				if params.ID == 0 || params.Name == "" || params.Hash == "" || params.CategoryID == 0 {
-					httpApiError(w, errMissingParam)
-					return
-				}
-
-				category, err := databaseFetchCategoryByID(db, params.CategoryID)
-				if err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				sound, err := databaseFetchSoundByID(db, params.ID)
-				if err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				if err := checkUserGuild(db, user.ID, category.GuildID); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				sound.Name = params.Name
-				sound.Hash = params.Hash
-				sound.CategoryID = params.CategoryID
-				sound.Sort = params.Sort
-				if err := sound.Save(db); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				httpApiJsonWrite(w, map[string]any{"success": true, "sound": sound}, http.StatusOK)
-				return
+			if params.ID == 0 || params.Name == "" || params.Hash == "" || params.CategoryID == 0 {
+				return nil, errMissingParam, errMissingParam
 			}
-		case http.MethodDelete:
-			{
-				params := httpDeleteSound{}
-				if err := httpApiJsonRead(r, &params); err != nil {
-					httpApiError(w, err)
-					return
-				}
 
-				sound, err := databaseFetchSoundByID(db, params.ID)
-				if err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				category, err := databaseFetchCategoryByID(db, sound.CategoryID)
-				if err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				if err := checkUserGuild(db, user.ID, category.GuildID); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				if err := sound.Delete(db); err != nil {
-					httpApiError(w, err)
-					return
-				}
-
-				httpApiSuccess(w)
-				return
+			category, err := databaseFetchCategoryByID(r.DB, params.CategoryID)
+			if err != nil {
+				return nil, err, errDatabaseRead
 			}
+
+			sound, err := databaseFetchSoundByID(r.DB, params.ID)
+			if err != nil {
+				return nil, err, errDatabaseRead
+			}
+
+			if err := checkUserGuild(r.DB, r.User.ID, category.GuildID); err != nil {
+				return nil, err, errNotAuthorized
+			}
+
+			sound.Name = params.Name
+			sound.Hash = params.Hash
+			sound.CategoryID = params.CategoryID
+			sound.Sort = params.Sort
+			if err := sound.Save(r.DB); err != nil {
+				return nil, err, errDatabaseWrite
+			}
+
+			return map[string]any{"success": true, "sound": sound}, nil, nil
 		}
-		httpApiError(w, errInvalidMethod)
+	case http.MethodDelete:
+		{
+			params := httpDeleteSound{}
+			if err := httpApiJsonRead(r.R, &params); err != nil {
+				return nil, err, errInvalidParam
+			}
+
+			sound, err := databaseFetchSoundByID(r.DB, params.ID)
+			if err != nil {
+				return nil, err, errDatabaseRead
+			}
+
+			category, err := databaseFetchCategoryByID(r.DB, sound.CategoryID)
+			if err != nil {
+				return nil, err, errDatabaseRead
+			}
+
+			if err := checkUserGuild(r.DB, r.User.ID, category.GuildID); err != nil {
+				return nil, err, errNotAuthorized
+			}
+
+			if err := sound.Delete(r.DB); err != nil {
+				return nil, err, errDatabaseWrite
+			}
+
+			return nil, nil, nil
+		}
 	}
+	return nil, errInvalidMethod, errInvalidMethod
 }
 
-func httpApiUploadSound(app *App) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		db, _ := httpApiInit(w, r)
-		if db == nil {
-			return
-		}
-		defer db.Close()
+type httpSortSound struct {
+	CategoryID int64   `json:"categoryId"`
+	IDs        []int64 `json:"ids"`
+}
 
-		// TODO more security to prevert user from uploading anything they want
-
-		soundReader := NewSoundReader(r.Body)
-		hash, err := soundReader.Save()
-		if err != nil {
-			httpApiError(w, err)
-			return
-		}
-
-		httpApiJsonWrite(w, map[string]any{"success": true, "hash": hash}, http.StatusOK)
+func httpApiSortSound(r *ApiRequest) (any, error, error) {
+	params := httpSortSound{}
+	if err := httpApiJsonRead(r.R, &params); err != nil {
+		return nil, err, errInvalidData
 	}
+
+	category, err := databaseFetchCategoryByID(r.DB, params.CategoryID)
+	if err != nil {
+		return nil, err, errDatabaseRead
+	}
+
+	if err := checkUserGuild(r.DB, r.User.ID, category.GuildID); err != nil {
+		return nil, err, errNotAuthorized
+	}
+
+	if err := databaseSortSounds(r.DB, params.CategoryID, params.IDs...); err != nil {
+		return nil, err, errDatabaseWrite
+	}
+
+	return nil, nil, nil
+}
+
+func httpApiUploadSound(r *ApiRequest) (any, error, error) {
+	// TODO more security to prevert user from uploading anything they want
+
+	soundReader := NewSoundReader(r.R.Body)
+	hash, err := soundReader.Save()
+	if err != nil {
+		return nil, err, errSoundWrite
+	}
+
+	return map[string]any{"success": true, "hash": hash}, nil, nil
+}
+
+type httpPlaySound struct {
+	ID int64 `json:"id"`
+}
+
+func httpApiPlaySound(r *ApiRequest) (any, error, error) {
+	params := httpPlaySound{}
+	if err := httpApiJsonRead(r.R, &params); err != nil {
+		return nil, err, errInvalidParam
+	}
+
+	sound, guildId, err := databaseFetchSoundByIDAndUser(r.DB, params.ID, r.User.ID)
+	if err != nil {
+		return nil, err, errDatabaseRead
+	}
+	if sound.Hash != "" {
+		soundReader, err := NewSoundReaderFromStorage(sound.Hash)
+		if err != nil {
+			return nil, err, errSoundRead
+		}
+
+		vs := r.App.Discord.VoiceSession(guildId)
+		channelId, err := r.App.Discord.UserVoiceChannel(guildId, r.User.ID)
+		if err != nil {
+			return nil, err, errDiscordApi
+		}
+		if err := vs.Play(soundReader, channelId); err != nil {
+			return nil, err, err
+		}
+	}
+
+	return nil, nil, nil
+}
+
+func httpError(w http.ResponseWriter, err error) {
+	statusCode := errHttpStatusCodeMap[err]
+	if statusCode == 0 {
+		statusCode = 500
+	}
+	w.Header().Add("Content-Type", "text/plain")
+	w.WriteHeader(statusCode)
+	w.Write([]byte("ERROR: " + err.Error()))
 }
 
 func RunWebServer(app *App) error {
@@ -424,13 +444,16 @@ func RunWebServer(app *App) error {
 	http.HandleFunc("/login", httpLogin)
 	http.HandleFunc("/redirect", httpLoginRedirect)
 
-	http.HandleFunc("/api/me", httpApiMe(app))
-	http.HandleFunc("/api/list_user_guilds", httpApiListGuilds(app))
-	http.HandleFunc("/api/list_guild_categories", httpApiListGuildCategories(app))
-	http.HandleFunc("/api/list_guild_sounds", httpApiListGuildSounds(app))
-	http.HandleFunc("/api/category", httpApiModCategory(app))
-	http.HandleFunc("/api/sound", httpApiModSound(app))
-	http.HandleFunc("/api/upload_sound", httpApiUploadSound(app))
+	http.HandleFunc("/api/me", handleHttpApi(app, httpApiMe))
+	http.HandleFunc("/api/list_user_guilds", handleHttpApi(app, httpApiListGuilds))
+	http.HandleFunc("/api/list_guild_categories", handleHttpApi(app, httpApiListGuildCategories))
+	http.HandleFunc("/api/list_guild_sounds", handleHttpApi(app, httpApiListGuildSounds))
+	http.HandleFunc("/api/category", handleHttpApi(app, httpApiModCategory))
+	http.HandleFunc("/api/sort_guild_categories", handleHttpApi(app, httpApiSortCategory))
+	http.HandleFunc("/api/sound", handleHttpApi(app, httpApiModSound))
+	http.HandleFunc("/api/sort_category_sounds", handleHttpApi(app, httpApiSortSound))
+	http.HandleFunc("/api/upload_sound", handleHttpApi(app, httpApiUploadSound))
+	http.HandleFunc("/api/play_sound", handleHttpApi(app, httpApiPlaySound))
 
 	log.Println("> Start web server at http://localhost:8081")
 	return http.ListenAndServe(":8081", nil)

@@ -12,17 +12,30 @@ import (
 )
 
 type SoundReader struct {
-	reader io.Reader
+	reader io.ReadCloser
 }
 
-func NewSoundReader(reader io.Reader) *SoundReader {
+func NewSoundReader(reader io.ReadCloser) *SoundReader {
 	return &SoundReader{reader: reader}
+}
+
+func NewSoundReaderFromStorage(hash string) (*SoundReader, error) {
+	log.Printf("> Load sound %s.", hash)
+	storePath := path.Join(storagePath, hash+".dat")
+	file, err := os.Open(storePath)
+	if err != nil {
+		return nil, err
+	}
+	return NewSoundReader(file), nil
 }
 
 func (s *SoundReader) NextFrame() ([]byte, error) {
 	frameSizeBytes := make([]byte, 2)
 	_, err := io.ReadAtLeast(s.reader, frameSizeBytes, 2)
 	if err != nil {
+		if err == io.EOF {
+			s.reader.Close()
+		}
 		return nil, err
 	}
 
@@ -32,6 +45,9 @@ func (s *SoundReader) NextFrame() ([]byte, error) {
 	frameBuffer := make([]byte, frameSize)
 	_, err = io.ReadAtLeast(s.reader, frameBuffer, int(frameSize))
 	if err != nil {
+		if err == io.EOF {
+			s.reader.Close()
+		}
 		return nil, err
 	}
 	return frameBuffer, nil
@@ -48,6 +64,7 @@ func (s *SoundReader) Save() (string, error) {
 	}()
 
 	hash := sha1.New()
+	size := 0
 
 	for {
 		frame, err := s.NextFrame()
@@ -55,16 +72,16 @@ func (s *SoundReader) Save() (string, error) {
 			if err == io.EOF {
 				break
 			}
-			file.Close()
 			return "", err
 		}
 		hash.Write(frame)
 
 		frameLenBytes := make([]byte, 2)
-		binary.LittleEndian.AppendUint16(frameLenBytes, uint16(len(frame)))
+		binary.LittleEndian.PutUint16(frameLenBytes, uint16(len(frame)))
 
 		file.Write(frameLenBytes)
 		file.Write(frame)
+		size += len(frameLenBytes) + len(frame)
 	}
 
 	file.Close()
@@ -73,13 +90,13 @@ func (s *SoundReader) Save() (string, error) {
 
 	if _, err := os.Stat(storePath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			log.Printf("> Saved sound %s to %s", hashStr, storePath)
+			log.Printf("> Saved sound %s (%d bytes).", hashStr, size)
 			return hashStr, os.Rename(file.Name(), storePath)
 		}
 		return "", err
 	}
 
-	log.Printf("> Sound %s already exists", hashStr)
+	log.Printf("> Sound %s already exists, skipped ", hashStr)
 
 	return hashStr, nil
 }

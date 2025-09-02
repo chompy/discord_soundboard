@@ -29,6 +29,7 @@ func NewDiscord() (*Discord, error) {
 	d.session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildVoiceStates | discordgo.IntentGuildMembers
 	d.session.AddHandler(d.onDiscordReady)
 	d.session.AddHandler(d.onDiscordVoiceStateUpdate)
+	// TODO do we need a handler to know when bot is added to a server?
 
 	log.Println("  - Open session")
 	if err := d.session.Open(); err != nil {
@@ -91,7 +92,7 @@ func (d *Discord) fetchGuilds() error {
 	if err != nil {
 		return err
 	}
-	// TODO: paginate
+	// TODO add pagination support?
 	d.Guilds = append(d.Guilds, guilds...)
 	log.Printf("  - %d guild(s) found", len(d.Guilds))
 	return nil
@@ -106,8 +107,9 @@ func (d *Discord) onDiscordVoiceStateUpdate(s *discordgo.Session, event *discord
 		for _, vs := range d.voiceSessions {
 			if vs.ChannelID == event.BeforeUpdate.ChannelID {
 				if !vs.HasUsers() {
+					log.Printf("> G:%s | No users in voice channel, ending session.", vs.GuildID)
 					if err := vs.End(); err != nil {
-						log.Printf("> WARNING: Failed to end voice session %s/%s: %s", vs.GuildID, vs.ChannelID, err)
+						log.Printf("> G:%s | WARNING: Failed to end voice session: %s", vs.GuildID, err)
 						return
 					}
 				}

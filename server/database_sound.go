@@ -77,6 +77,50 @@ func databaseFetchSoundsByGuildID(db *sql.DB, guildID string) ([]Sound, error) {
 	return out, nil
 }
 
+func databaseSortSounds(db *sql.DB, categoryID int64, IDs ...int64) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt := `UPDATE sounds SET sort = ? WHERE category_id = ?`
+	if _, err := tx.Exec(stmt, 9999, categoryID); err != nil {
+		return err
+	}
+	for index, ID := range IDs {
+		stmt = `UPDATE sounds SET sort = ? WHERE id = ? AND category_id = ?`
+		if _, err := tx.Exec(stmt, index, ID, categoryID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func databaseFetchSoundByIDAndUser(db *sql.DB, ID int64, userId string) (Sound, string, error) {
+	stmt := `
+	SELECT s.id, s.name, s.hash, s.category_id, s.sort, s.created, s.updated, c.guild_id
+	FROM sounds AS s
+	INNER JOIN categories AS c
+	ON s.category_id = c.id
+	INNER JOIN user_guilds AS u
+	ON c.guild_id = u.guild_id 
+	WHERE u.user_id = ? AND s.id = ?
+	`
+	rows, err := db.Query(stmt, userId, ID)
+	if err != nil {
+		return Sound{}, "", err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		sound := Sound{}
+		guildId := ""
+		err = rows.Scan(&sound.ID, &sound.Name, &sound.Hash, &sound.CategoryID, &sound.Sort, &sound.Created, &sound.Updated, &guildId)
+		return sound, guildId, err
+	}
+	return Sound{}, "", nil
+}
+
 func (s *Sound) Save(db *sql.DB) error {
 	s.Updated = time.Now()
 	if s.ID > 0 {

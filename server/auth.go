@@ -107,7 +107,7 @@ func httpLoginRedirect(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 
 	if r.URL.Query().Get("error") != "" || code == "" {
-		httpApiError(w, errInvalidAuth)
+		httpError(w, errInvalidAuth)
 		return
 	}
 
@@ -116,7 +116,7 @@ func httpLoginRedirect(w http.ResponseWriter, r *http.Request) {
 
 	db, err := databaseOpen()
 	if err != nil {
-		httpApiError(w, err)
+		httpError(w, errDatabaseOpen)
 		return
 	}
 	defer db.Close()
@@ -124,7 +124,7 @@ func httpLoginRedirect(w http.ResponseWriter, r *http.Request) {
 	userId, userIdOk := userData["id"].(string)
 	userName, userNameOk := userData["username"].(string)
 	if !userIdOk || !userNameOk || userId == "" {
-		httpApiError(w, errInvalidAuth)
+		httpError(w, errInvalidAuth)
 		return
 	}
 
@@ -132,7 +132,7 @@ func httpLoginRedirect(w http.ResponseWriter, r *http.Request) {
 
 	user, err := databaseFetchUserByID(db, userId)
 	if err != nil {
-		httpApiError(w, err)
+		httpError(w, errDatabaseRead)
 		return
 	}
 
@@ -140,18 +140,18 @@ func httpLoginRedirect(w http.ResponseWriter, r *http.Request) {
 	user.Name = userName
 	user.SessionToken = generateSessionToken(&user)
 	if err := user.Save(db); err != nil {
-		httpApiError(w, err)
+		httpError(w, errDatabaseWrite)
 		return
 	}
 
 	guildsReader, err := fetchUserGuilds(accessToken)
 	if err != nil {
 		log.Println(err)
-		httpApiError(w, errInvalidAuth)
+		httpError(w, errInvalidAuth)
 		return
 	}
 	if err := importUserGuilds(db, guildsReader, user.ID); err != nil {
-		httpApiError(w, err)
+		httpError(w, errDatabaseWrite)
 		return
 	}
 

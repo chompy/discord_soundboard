@@ -33,8 +33,11 @@ func InitVoiceSession(guild string, discordSession *discordgo.Session) *DiscordV
 }
 
 func (v *DiscordVoiceSession) checkConnection() error {
+	if !v.IsActive || v.GuildID == "" || v.ChannelID == "" {
+		return errNoActiveChannel
+	}
 	if v.conn == nil {
-		log.Printf("- (Re)connecting to voice session %s/%s", v.GuildID, v.ChannelID)
+		log.Printf("> G:%s | Connecting to channel %s.", v.GuildID, v.ChannelID)
 		var err error
 		v.conn, err = v.discordSession.ChannelVoiceJoin(v.GuildID, v.ChannelID, false, true)
 		if err != nil {
@@ -57,12 +60,13 @@ func (v *DiscordVoiceSession) processBuffer() error {
 	for {
 		if v.buffer == nil {
 			if v.IsPlaying {
-				log.Printf("- End playback in voice session %s/%s", v.GuildID, v.ChannelID)
+				log.Printf("> G:%s | End playback in channel %s.", v.GuildID, v.ChannelID)
 				v.conn.Speaking(false)
 				v.IsPlaying = false
 			}
 			break
 		}
+
 		frame, err := v.buffer.NextFrame()
 		if err != nil {
 			v.buffer = nil
@@ -71,8 +75,9 @@ func (v *DiscordVoiceSession) processBuffer() error {
 			}
 			return err
 		}
+
 		if !v.IsPlaying {
-			log.Printf("- Begin playback in voice session %s/%s", v.GuildID, v.ChannelID)
+			log.Printf("> G:%s | Begin playback in channel %s.", v.GuildID, v.ChannelID)
 			v.IsPlaying = true
 			if err := v.conn.Speaking(true); err != nil {
 				return err
@@ -85,15 +90,15 @@ func (v *DiscordVoiceSession) processBuffer() error {
 }
 
 func (v *DiscordVoiceSession) start() {
-	log.Printf("- Begin voice session %s/%s", v.GuildID, v.ChannelID)
+	log.Printf("> G:%s | Begin voice session.", v.GuildID)
 	for range time.Tick(time.Millisecond * 5) {
 		if !v.IsActive {
-			log.Printf("- End voice session %s/%s", v.GuildID, v.ChannelID)
+			log.Printf("> G:%s | End voice session.", v.GuildID)
 			return
 		}
 		if v.ChannelID != "" {
 			if err := v.processBuffer(); err != nil {
-				log.Printf("- Error in voice session %s/%s: %s", v.GuildID, v.ChannelID, err)
+				log.Printf("> G:%s | Error in voice session: %s", v.GuildID, err)
 			}
 		}
 	}
@@ -102,6 +107,7 @@ func (v *DiscordVoiceSession) start() {
 // End the voice session.
 func (v *DiscordVoiceSession) End() error {
 	v.IsPlaying = false
+	v.IsActive = false
 	v.buffer = nil
 	var err error
 	if v.conn != nil {
@@ -117,14 +123,17 @@ func (v *DiscordVoiceSession) Stop() {
 }
 
 func (v *DiscordVoiceSession) Play(sound *SoundReader, channelID string) error {
+	if channelID == "" {
+		return errNoActiveChannel
+	}
 	if v.ChannelID != channelID {
+		log.Printf("> G:%s | Set active channel to %s.", v.GuildID, channelID)
 		v.ChannelID = channelID
 		if v.conn != nil {
 			v.conn.Disconnect()
 			v.conn = nil
 		}
 	}
-	//log.Printf("- Play '%s' in voice session %s/%s", sound.name, v.GuildID, v.ChannelID)
 	v.buffer = sound
 	v.lastActivity = time.Now()
 	return nil
@@ -179,7 +188,7 @@ func (v *DiscordVoiceSession) Play(sound *SoundReader, channelID string) error {
 func (v *DiscordVoiceSession) HasUsers() bool {
 	members, err := v.discordSession.GuildMembers(v.GuildID, "", 100)
 	if err != nil {
-		log.Println("> WARNING: Failed to fetch member list: ", err)
+		log.Printf("> G:%s | Failed to fetch member list: %s", v.GuildID, err)
 		return false
 	}
 	for _, m := range members {

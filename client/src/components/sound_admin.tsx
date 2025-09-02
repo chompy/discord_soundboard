@@ -1,58 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, act } from 'react';
 
 import { api, Category, Sound } from '../api';
 import Button from './button';
 import SoundAdminOption from './sound_admin_option';
-import { convertSound } from '../converter';
-import { error } from '../utils';
+import { sound as soundUtils } from '../sound';
+import { error, log } from '../utils';
+import SortableList, { SortableItem } from 'react-easy-sort';
+import UseSoundList from '../hooks/sound_list';
 
 export type SoundAdminProperties = {
     guildId: string;
+    height: number;
 };
 
-function SoundAdmin({ guildId }: SoundAdminProperties) {
-    const [isLoading, setIsLoading] = useState(true);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [sounds, setSounds] = useState<Sound[]>([]);
+function SoundAdmin({ guildId, height }: SoundAdminProperties) {
+    const [isLoading, setIsLoading] = useState(false);
+    const {
+        isLoading: isSoundListLoading,
+        categories,
+        sounds,
+        updateCategory,
+        updateSound,
+        removeCategory,
+        removeSound,
+    } = UseSoundList(guildId);
     const [activeCategory, setActiveCategory] = useState<Category | null>(null);
 
     useEffect(() => {
-        Promise.all([
-            api.listCategories(guildId),
-            api.listSounds(guildId),
-        ]).then(([categories, sounds]) => {
-            setCategories(categories);
-            setSounds(sounds);
+        if (!activeCategory) {
             setActiveCategory(categories[0]);
-            setIsLoading(false);
-        });
-    }, []);
-
-    const updateCategory = (category: Category) => {
-        const index = categories.findIndex(
-            (iterCategory) => iterCategory.id === category.id
-        );
-        if (index >= 0) {
-            categories[index] = category;
-        } else {
-            categories.push(category);
         }
-        categories.sort((a, b) => a.sort - b.sort);
-        setCategories(categories);
-        setActiveCategory(category);
-    };
+    }, [categories]);
 
     const addCategory = async () => {
-        if (isLoading) return;
+        if (isLoading || isSoundListLoading) return;
         const name = prompt('Enter category name:')?.trim();
         if (!name) return;
         setIsLoading(true);
-        updateCategory(await api.saveCategory({ name, guildId }));
+        updateCategory(
+            await api.saveCategory({
+                name,
+                guildId,
+                sort: (categories.length + 1) * 1000,
+            })
+        );
         setIsLoading(false);
     };
 
     const deleteCategory = async (category: Category) => {
-        if (isLoading) return;
+        if (isLoading || isSoundListLoading) return;
         const catSounds = sounds.filter(
             (sound) => sound.categoryId === category.id
         );
@@ -68,17 +64,12 @@ function SoundAdmin({ guildId }: SoundAdminProperties) {
 
         setIsLoading(true);
         await api.deleteCategory(category);
-        setCategories(
-            categories.filter((iterCategory) => iterCategory.id !== category.id)
-        );
-        if (activeCategory.id === category.id) {
-            setActiveCategory(categories.length > 0 ? categories[0] : null);
-        }
+        removeCategory(category);
         setIsLoading(false);
     };
 
     const renameCategory = async (category: Category) => {
-        if (isLoading) return;
+        if (isLoading || isSoundListLoading) return;
         const name = prompt('Enter category name:', category.name)?.trim();
         if (!name) return;
         setIsLoading(true);
@@ -87,27 +78,28 @@ function SoundAdmin({ guildId }: SoundAdminProperties) {
         setIsLoading(false);
     };
 
-    const updateSound = (sound: Sound) => {
-        if (isLoading) return;
-        const index = sounds.findIndex(
-            (iterSound) => iterSound.id === sound.id
-        );
-        if (index >= 0) {
-            sound[index] = sound;
-        } else {
-            sounds.push(sound);
-        }
-        sounds.sort((a, b) => a.sort - b.sort);
-        setSounds(sounds);
+    const onSortCategory = async (fromIndex: number, toIndex: number) => {
+        let updatedCategories = Array.from(categories);
+        const item = updatedCategories.splice(fromIndex, 1);
+        updatedCategories = [
+            ...updatedCategories.slice(0, toIndex),
+            ...item,
+            ...updatedCategories.slice(toIndex),
+        ];
+        updatedCategories.forEach((category, index) => {
+            category.sort = index;
+        });
+        await api.sortCategories(updatedCategories);
+        updateCategory(updatedCategories[0]);
     };
 
     const addSound = async () => {
-        if (isLoading) return;
+        if (isLoading || isSoundListLoading) return;
         document.getElementById('sound-admin-file').click();
     };
 
     const onFile = async () => {
-        if (!activeCategory || isLoading) return;
+        if (!activeCategory || isLoading || isSoundListLoading) return;
 
         setIsLoading(true);
         const fileElement = document.getElementById(
@@ -117,7 +109,7 @@ function SoundAdmin({ guildId }: SoundAdminProperties) {
             // TODO try/catch doesn't catch errors??
             let soundData = null;
             try {
-                soundData = await convertSound(
+                soundData = await soundUtils.convert(
                     await fileElement.files[0].arrayBuffer()
                 );
             } catch (e) {
@@ -131,6 +123,7 @@ function SoundAdmin({ guildId }: SoundAdminProperties) {
                 name: '(new sound)',
                 hash,
                 categoryId: activeCategory.id,
+                sort: (sounds.length + 1) * 1000,
             });
             updateSound(sound);
         }
@@ -138,7 +131,7 @@ function SoundAdmin({ guildId }: SoundAdminProperties) {
     };
 
     const renameSound = async (sound: Sound) => {
-        if (isLoading) return;
+        if (isLoading || isSoundListLoading) return;
         const name = prompt('Enter sound name:', sound.name)?.trim();
         if (!name) return;
         setIsLoading(true);
@@ -148,11 +141,28 @@ function SoundAdmin({ guildId }: SoundAdminProperties) {
     };
 
     const deleteSound = async (sound: Sound) => {
-        if (isLoading) return;
+        if (isLoading || isSoundListLoading) return;
         setIsLoading(true);
         await api.deleteSound(sound);
-        setSounds(sounds.filter((iterSound) => iterSound.id !== sound.id));
+        removeSound(sound);
         setIsLoading(false);
+    };
+
+    const onSortSound = async (fromIndex: number, toIndex: number) => {
+        const sortSounds = sounds.filter(
+            (sound) => sound.categoryId === activeCategory.id
+        );
+        const item = sortSounds.splice(fromIndex, 1);
+        const updatedSounds = [
+            ...sortSounds.slice(0, toIndex),
+            ...item,
+            ...sortSounds.slice(toIndex),
+        ];
+        updatedSounds.forEach((sound, index) => {
+            sound.sort = index;
+        });
+        await api.sortSounds(updatedSounds);
+        updateSound(updatedSounds[0]);
     };
 
     return (
@@ -171,35 +181,65 @@ function SoundAdmin({ guildId }: SoundAdminProperties) {
                 />
             </div>
             <input id="sound-admin-file" type="file" onChange={onFile} />
-            <div className="categories">
-                <ul>
-                    {categories.map((category) => (
-                        <SoundAdminOption
-                            key={`category-${category.id}`}
-                            active={activeCategory.id === category.id}
-                            label={category.name}
-                            onClick={() => setActiveCategory(category)}
-                            onDelete={() => deleteCategory(category)}
-                            onEdit={() => renameCategory(category)}
-                        />
-                    ))}
-                </ul>
-            </div>
-            <div className="sounds">
-                <ul>
-                    {sounds
-                        .filter(
-                            (sound) => sound.categoryId === activeCategory.id
-                        )
-                        .map((sound) => (
-                            <SoundAdminOption
-                                key={`sound-${sound.id}`}
-                                label={sound.name}
-                                onEdit={() => renameSound(sound)}
-                                onDelete={() => deleteSound(sound)}
-                            />
+            <div className="categories" style={{ height: `${height - 150}px` }}>
+                <div className="section-title">Categories</div>
+                {activeCategory && (
+                    <SortableList
+                        onSortEnd={onSortCategory}
+                        className="category-sort"
+                        draggedItemClassName="category-dragged"
+                        lockAxis="y"
+                    >
+                        {categories.map((category) => (
+                            <SortableItem key={`sort-category-${category.id}`}>
+                                <div>
+                                    <SoundAdminOption
+                                        key={`category-${category.id}`}
+                                        active={
+                                            !isLoading &&
+                                            activeCategory.id === category.id
+                                        }
+                                        label={category.name}
+                                        onClick={() =>
+                                            setActiveCategory(category)
+                                        }
+                                        onDelete={() =>
+                                            deleteCategory(category)
+                                        }
+                                        onEdit={() => renameCategory(category)}
+                                    />
+                                </div>
+                            </SortableItem>
                         ))}
-                </ul>
+                    </SortableList>
+                )}
+            </div>
+            <div className="sounds" style={{ height: `${height - 150}px` }}>
+                <div className="section-title">Sounds</div>
+                {activeCategory && (
+                    <SortableList
+                        onSortEnd={onSortSound}
+                        className="sound-sort"
+                    >
+                        {sounds
+                            .filter(
+                                (sound) =>
+                                    sound.categoryId === activeCategory.id
+                            )
+                            .map((sound) => (
+                                <SortableItem key={`sort-sound-${sound.id}`}>
+                                    <div>
+                                        <SoundAdminOption
+                                            key={`sound-${sound.id}`}
+                                            label={sound.name}
+                                            onEdit={() => renameSound(sound)}
+                                            onDelete={() => deleteSound(sound)}
+                                        />
+                                    </div>
+                                </SortableItem>
+                            ))}
+                    </SortableList>
+                )}
             </div>
         </div>
     );

@@ -31,11 +31,12 @@ func databaseCreateUserGuildTable(db *sql.DB) error {
 	stmt := `
 	CREATE TABLE IF NOT EXISTS user_guilds (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_id TEXT,
-		guild_id TEXT,
+		user_id TEXT NOT NULL,
+		guild_id TEXT NOT NULL,
 		permissions INTEGER,
 		created DATETIME,
-		updated DATETIME
+		updated DATETIME,
+		UNIQUE(user_id, guild_id)
 	)
 	`
 	_, err := db.Exec(stmt)
@@ -109,7 +110,7 @@ func (u *UserGuild) Save(db *sql.DB) error {
 
 	u.Created = u.Updated
 	stmt := `
-	INSERT INTO user_guilds
+	INSERT OR IGNORE INTO user_guilds 
 		(user_id, guild_id, permissions, created, updated) 
 		VALUES(?, ?, ?, ?, ?)
 	`

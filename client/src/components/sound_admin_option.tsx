@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
-
-import { api, Category, Sound } from '../api';
-import Button from './button';
+import React from 'react';
+import { SortableKnob } from 'react-easy-sort';
 
 export type SoundAdminOptionProperties = {
     label: string;
@@ -19,7 +17,7 @@ function SoundAdminOption({
     onDelete,
 }: SoundAdminOptionProperties) {
     return (
-        <li className={active ? 'active' : ''}>
+        <div className={`sound-admin-option ${active && 'active'}`}>
             <span
                 title={label}
                 onClick={(e) => {
@@ -47,7 +45,7 @@ function SoundAdminOption({
             >
                 ✏️
             </a>
-        </li>
+        </div>
     );
 }
 

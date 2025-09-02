@@ -1,13 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { log } from '../utils';
 
 export type ModalProperties = {
     children: React.JSX.Element;
     isOpen: boolean;
     close?: () => void;
+    onResize?: (height: number) => void;
 };
 
-function Modal({ children, isOpen, close }: ModalProperties) {
-    if (!isOpen) return;
+function Modal({ children, isOpen, close, onResize }: ModalProperties) {
+    const [height, setHeight] = useState(0);
+
+    const getModalHeight = () => {
+        const elementList = document.getElementsByClassName('modal-inner');
+        return elementList && elementList.length && elementList[0].clientHeight;
+    };
+
+    useEffect(() => {
+        window.addEventListener('resize', () => {
+            setHeight(getModalHeight());
+        });
+    }, []);
+
+    useEffect(() => {
+        onResize?.(height);
+    }, [height]);
 
     const onClickOutsideClose = (e: object) => {
         if (
@@ -20,6 +37,12 @@ function Modal({ children, isOpen, close }: ModalProperties) {
             close?.();
         }
     };
+
+    if (!isOpen) return;
+
+    setTimeout(() => {
+        setHeight(getModalHeight());
+    }, 10);
 
     return (
         <>
