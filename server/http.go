@@ -427,6 +427,22 @@ func httpApiPlaySound(r *ApiRequest) (any, error, error) {
 	return nil, nil, nil
 }
 
+type httpStopSounds struct {
+	GuildID string `json:"guildId"`
+}
+
+func httpApiStopSounds(r *ApiRequest) (any, error, error) {
+	params := httpStopSounds{}
+	if err := httpApiJsonRead(r.R, &params); err != nil {
+		return nil, err, errInvalidParam
+	}
+
+	vs := r.App.Discord.VoiceSession(params.GuildID)
+	vs.Stop()
+
+	return nil, nil, nil
+}
+
 func httpError(w http.ResponseWriter, err error) {
 	statusCode := errHttpStatusCodeMap[err]
 	if statusCode == 0 {
@@ -454,6 +470,7 @@ func RunWebServer(app *App) error {
 	http.HandleFunc("/api/sort_category_sounds", handleHttpApi(app, httpApiSortSound))
 	http.HandleFunc("/api/upload_sound", handleHttpApi(app, httpApiUploadSound))
 	http.HandleFunc("/api/play_sound", handleHttpApi(app, httpApiPlaySound))
+	http.HandleFunc("/api/stop_sounds", handleHttpApi(app, httpApiStopSounds))
 
 	log.Println("> Start web server at http://localhost:8081")
 	return http.ListenAndServe(":8081", nil)

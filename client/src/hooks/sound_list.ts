@@ -1,82 +1,47 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, Category, Sound } from '../api';
 
-function UseSoundList(guildId: string) {
-    const [isLoading, setIsLoading] = useState(true);
+export type SoundList = {
+    isLoading: boolean;
+    categories: Category[];
+    sounds: Sound[];
+    refresh: () => void;
+    localRefresh: () => void;
+};
+
+function useSoundList(guildId?: string) {
+    const [isLoading, setIsLoading] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
     const [sounds, setSounds] = useState<Sound[]>([]);
 
-    const refresh = () => {
-        Promise.all([
+    const localRefresh = () => {
+        setCategories(Array.from(categories));
+        setSounds(Array.from(sounds));
+    };
+
+    const refresh = useCallback(async () => {
+        if (!guildId) return;
+        setIsLoading(true);
+        const [fetchedCategories, fetchedSounds] = await Promise.all([
             api.listCategories(guildId),
             api.listSounds(guildId),
-        ]).then(([fetchedCategories, fetchedSounds]) => {
-            setCategories(fetchedCategories);
-            setSounds(fetchedSounds);
-            setIsLoading(false);
-        });
-    };
+        ]);
+        setCategories(fetchedCategories);
+        setSounds(fetchedSounds);
+        setIsLoading(false);
+    }, [guildId]);
 
-    useEffect(refresh, []);
-
-    const soundInCategory = (category: Category) =>
-        sounds.filter((sound) => sound.categoryId === category.id);
-
-    const updateCategory = (category: Category) => {
-        const index = categories.findIndex(
-            (iterCategory) => iterCategory.id === category.id
-        );
-        if (index >= 0) {
-            categories[index] = category;
-        } else {
-            categories.push(category);
-        }
-        setCategories(Array.from(categories).sort((a, b) => a.sort - b.sort));
-    };
-
-    const removeCategory = (category: Category) => {
-        const index = categories.findIndex(
-            (iterCategory) => iterCategory.id === category.id
-        );
-        const updatedCategories = Array.from(categories);
-        updatedCategories.splice(index, 1);
-        setCategories(updatedCategories);
-    };
-
-    const updateSound = (sound: Sound, remove?: boolean) => {
-        const index = sounds.findIndex(
-            (iterSound) => iterSound.id === sound.id
-        );
-        if (index >= 0) {
-            sounds.splice(index, 1);
-        }
-        setSounds(
-            [...sounds, ...(remove ? [] : [sound])].sort(
-                (a, b) => a.sort - b.sort
-            )
-        );
-    };
-
-    const removeSound = (sound: Sound) => {
-        const index = sounds.findIndex(
-            (iterSound) => iterSound.id === sound.id
-        );
-        const updatedSounds = Array.from(sounds);
-        updatedSounds.splice(index, 1);
-        setSounds(updatedSounds);
-    };
+    useEffect(() => {
+        refresh();
+    }, [guildId]);
 
     return {
         isLoading,
         categories,
         sounds,
-        soundInCategory,
-        updateCategory,
-        updateSound,
-        removeCategory,
-        removeSound,
         refresh,
+        localRefresh,
     };
 }
 
-export default UseSoundList;
+export default useSoundList;

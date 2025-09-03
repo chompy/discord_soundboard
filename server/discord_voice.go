@@ -22,11 +22,9 @@ type DiscordVoiceSession struct {
 func InitVoiceSession(guild string, discordSession *discordgo.Session) *DiscordVoiceSession {
 	v := &DiscordVoiceSession{
 		GuildID:        guild,
-		IsActive:       true,
 		IsPlaying:      false,
 		discordSession: discordSession,
 		buffer:         nil,
-		lastActivity:   time.Now(),
 	}
 	go v.start()
 	return v
@@ -57,40 +55,41 @@ func (v *DiscordVoiceSession) processBuffer() error {
 		return nil
 	}
 
-	for {
-		if v.buffer == nil {
-			if v.IsPlaying {
-				log.Printf("> G:%s | End playback in channel %s.", v.GuildID, v.ChannelID)
-				v.conn.Speaking(false)
-				v.IsPlaying = false
-			}
-			break
+	if v.buffer == nil {
+		if v.IsPlaying {
+			log.Printf("> G:%s | End playback in channel %s.", v.GuildID, v.ChannelID)
+			v.conn.Speaking(false)
+			v.IsPlaying = false
 		}
+		return nil
+	}
 
-		frame, err := v.buffer.NextFrame()
-		if err != nil {
-			v.buffer = nil
-			if err == io.EOF {
-				break
-			}
+	frame, err := v.buffer.NextFrame()
+	if err != nil {
+		v.buffer = nil
+		if err == io.EOF {
+			return nil
+		}
+		return err
+	}
+
+	if !v.IsPlaying {
+		log.Printf("> G:%s | Begin playback in channel %s.", v.GuildID, v.ChannelID)
+		v.IsPlaying = true
+		if err := v.conn.Speaking(true); err != nil {
 			return err
 		}
-
-		if !v.IsPlaying {
-			log.Printf("> G:%s | Begin playback in channel %s.", v.GuildID, v.ChannelID)
-			v.IsPlaying = true
-			if err := v.conn.Speaking(true); err != nil {
-				return err
-			}
-		}
-		v.conn.OpusSend <- frame
 	}
+	v.conn.OpusSend <- frame
 
 	return nil
 }
 
 func (v *DiscordVoiceSession) start() {
 	log.Printf("> G:%s | Begin voice session.", v.GuildID)
+	v.IsActive = true
+	v.lastActivity = time.Now()
+
 	for range time.Tick(time.Millisecond * 5) {
 		if !v.IsActive {
 			log.Printf("> G:%s | End voice session.", v.GuildID)

@@ -1,17 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-
-import UseSoundList from '../hooks/sound_list';
+import { SoundList } from '../hooks/sound_list';
 import { api } from '../api';
 
 export type SoundPlayerProperties = {
-    guildId: string;
+    soundList: SoundList;
 };
 
-function SoundPlayer({ guildId }: SoundPlayerProperties) {
-    const { isLoading, categories, sounds } = UseSoundList(guildId);
+function SoundPlayer({ soundList }: SoundPlayerProperties) {
+    const { isLoading, categories, sounds } = soundList;
 
     if (isLoading) return;
-
     return (
         <div className="sound-player">
             <div className="categories">

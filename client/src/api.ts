@@ -78,13 +78,13 @@ export const api = {
     },
 
     async uploadSound(data: ArrayBuffer): Promise<string> {
-        log(`Upload sound`);
+        log(`Upload new sound`);
         const { hash } = await api._fetch('/api/upload_sound', 'POST', data);
         return hash;
     },
 
     async saveCategory(category: Category): Promise<Category> {
-        log(`Save category ${category.id ?? '(new)'}`);
+        log(`Save category ${category.name} (${category.id ?? '(new)'})`);
         const { category: output } = await api._fetch(
             '/api/category',
             category.id ? 'PUT' : 'POST',
@@ -104,12 +104,12 @@ export const api = {
     },
 
     async deleteCategory(category: Category): Promise<void> {
-        log(`Delete category ${category.id}`);
+        log(`Delete category ${category.name} (${category.id})`);
         await api._fetch('/api/category', 'DELETE', { id: category.id });
     },
 
     async saveSound(sound: Sound): Promise<Sound> {
-        log(`Save sound with hash ${sound.hash}`);
+        log(`Save sound ${sound.name} with hash ${sound.hash}`);
         const { sound: output } = await api._fetch(
             '/api/sound',
             sound.id ? 'PUT' : 'POST',
@@ -129,12 +129,17 @@ export const api = {
     },
 
     async deleteSound(sound: Sound): Promise<void> {
-        log(`Delete sound ${sound.id}`);
+        log(`Delete sound ${sound.name} (${sound.id})`);
         await api._fetch('/api/sound', 'DELETE', { id: sound.id });
     },
 
     async playSound(sound: Sound): Promise<void> {
-        log(`Play sound ${sound.id}`);
+        log(`Play sound ${sound.name} (${sound.id})`);
         await api._fetch('/api/play_sound', 'POST', { id: sound.id });
+    },
+
+    async stopSounds(guildId: string): Promise<void> {
+        log(`Stop all sounds`);
+        await api._fetch('/api/stop_sounds', 'POST', { guildId });
     },
 };

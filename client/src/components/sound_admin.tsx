@@ -1,29 +1,27 @@
-import React, { useState, useEffect, useRef, act } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { api, Category, Sound } from '../api';
 import Button from './button';
 import SoundAdminOption from './sound_admin_option';
 import { sound as soundUtils } from '../sound';
-import { error, log } from '../utils';
+import { error } from '../utils';
 import SortableList, { SortableItem } from 'react-easy-sort';
-import UseSoundList from '../hooks/sound_list';
+import { SoundList } from '../hooks/sound_list';
 
 export type SoundAdminProperties = {
     guildId: string;
     height: number;
+    soundList: SoundList;
 };
 
-function SoundAdmin({ guildId, height }: SoundAdminProperties) {
+function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
     const [isLoading, setIsLoading] = useState(false);
     const {
         isLoading: isSoundListLoading,
         categories,
         sounds,
-        updateCategory,
-        updateSound,
-        removeCategory,
-        removeSound,
-    } = UseSoundList(guildId);
+        localRefresh,
+    } = soundList;
     const [activeCategory, setActiveCategory] = useState<Category | null>(null);
 
     useEffect(() => {
@@ -32,23 +30,28 @@ function SoundAdmin({ guildId, height }: SoundAdminProperties) {
         }
     }, [categories]);
 
+    const setIsLoadingTimeout = (value?: boolean) =>
+        setTimeout(() => setIsLoading(value), 250);
+
     const addCategory = async () => {
         if (isLoading || isSoundListLoading) return;
         const name = prompt('Enter category name:')?.trim();
         if (!name) return;
         setIsLoading(true);
-        updateCategory(
+        categories.push(
             await api.saveCategory({
                 name,
                 guildId,
                 sort: (categories.length + 1) * 1000,
             })
         );
-        setIsLoading(false);
+        localRefresh();
+        setIsLoadingTimeout();
     };
 
     const deleteCategory = async (category: Category) => {
         if (isLoading || isSoundListLoading) return;
+
         const catSounds = sounds.filter(
             (sound) => sound.categoryId === category.id
         );
@@ -63,9 +66,16 @@ function SoundAdmin({ guildId, height }: SoundAdminProperties) {
         }
 
         setIsLoading(true);
+
+        const index = categories.findIndex(
+            (iterCategory) => iterCategory.id === category.id
+        );
+        categories.splice(index, 1);
+
         await api.deleteCategory(category);
-        removeCategory(category);
-        setIsLoading(false);
+
+        localRefresh();
+        setIsLoadingTimeout();
     };
 
     const renameCategory = async (category: Category) => {
@@ -74,23 +84,27 @@ function SoundAdmin({ guildId, height }: SoundAdminProperties) {
         if (!name) return;
         setIsLoading(true);
         category.name = name;
-        updateCategory(await api.saveCategory(category));
-        setIsLoading(false);
+        await api.saveCategory(category);
+        localRefresh();
+        setIsLoadingTimeout();
     };
 
     const onSortCategory = async (fromIndex: number, toIndex: number) => {
-        let updatedCategories = Array.from(categories);
-        const item = updatedCategories.splice(fromIndex, 1);
-        updatedCategories = [
-            ...updatedCategories.slice(0, toIndex),
-            ...item,
-            ...updatedCategories.slice(toIndex),
-        ];
-        updatedCategories.forEach((category, index) => {
-            category.sort = index;
+        if (isLoading || isSoundListLoading) return;
+
+        setIsLoading(true);
+        const category = categories[fromIndex];
+        const moveTo = categories[toIndex];
+
+        categories.forEach((category, index) => {
+            category.sort = index + 1 * 1000;
         });
-        await api.sortCategories(updatedCategories);
-        updateCategory(updatedCategories[0]);
+        category.sort = moveTo.sort + (fromIndex < toIndex ? 1 : -1);
+        categories.sort((a, b) => a.sort - b.sort);
+
+        await api.sortCategories(categories);
+        localRefresh();
+        setIsLoadingTimeout();
     };
 
     const addSound = async () => {
@@ -114,20 +128,21 @@ function SoundAdmin({ guildId, height }: SoundAdminProperties) {
                 );
             } catch (e) {
                 error(`Unable to decode sound: ${e}`);
-                setIsLoading(false);
+                setIsLoadingTimeout();
                 return;
             }
 
             const hash = await api.uploadSound(soundData);
             const sound = await api.saveSound({
-                name: '(new sound)',
+                name: fileElement.files[0].name,
                 hash,
                 categoryId: activeCategory.id,
                 sort: (sounds.length + 1) * 1000,
             });
-            updateSound(sound);
+            sounds.push(sound);
+            localRefresh();
         }
-        setIsLoading(false);
+        setIsLoadingTimeout();
     };
 
     const renameSound = async (sound: Sound) => {
@@ -136,37 +151,54 @@ function SoundAdmin({ guildId, height }: SoundAdminProperties) {
         if (!name) return;
         setIsLoading(true);
         sound.name = name;
-        updateSound(await api.saveSound(sound));
-        setIsLoading(false);
+        await api.saveSound(sound);
+        localRefresh();
+        setIsLoadingTimeout();
     };
 
     const deleteSound = async (sound: Sound) => {
         if (isLoading || isSoundListLoading) return;
         setIsLoading(true);
+
+        const index = sounds.findIndex(
+            (iterSound) => iterSound.id === sound.id
+        );
+        sounds.splice(index, 1);
+
         await api.deleteSound(sound);
-        removeSound(sound);
-        setIsLoading(false);
+
+        localRefresh();
+        setIsLoadingTimeout();
     };
 
     const onSortSound = async (fromIndex: number, toIndex: number) => {
-        const sortSounds = sounds.filter(
+        if (isLoading || isSoundListLoading) return;
+
+        setIsLoading(true);
+
+        sounds.forEach((sound, index) => {
+            sound.sort = index + 1 * 1000;
+        });
+
+        const categorySounds = sounds.filter(
             (sound) => sound.categoryId === activeCategory.id
         );
-        const item = sortSounds.splice(fromIndex, 1);
-        const updatedSounds = [
-            ...sortSounds.slice(0, toIndex),
-            ...item,
-            ...sortSounds.slice(toIndex),
-        ];
-        updatedSounds.forEach((sound, index) => {
-            sound.sort = index;
-        });
-        await api.sortSounds(updatedSounds);
-        updateSound(updatedSounds[0]);
+        const moveFrom = categorySounds[fromIndex];
+        const moveAfter = categorySounds[toIndex];
+
+        moveFrom.sort = moveAfter.sort + (fromIndex < toIndex ? 1 : -1);
+
+        sounds.sort((a, b) => a.sort - b.sort);
+
+        await api.sortSounds(
+            sounds.filter((sound) => sound.categoryId === activeCategory.id)
+        );
+        localRefresh();
+        setIsLoadingTimeout();
     };
 
     return (
-        <div className="sound-admin">
+        <div className={`sound-admin${isLoading ? ' loading' : ''}`}>
             <h1>Sound Admin</h1>
             <div className="options">
                 <Button

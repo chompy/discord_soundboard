@@ -24,6 +24,13 @@
         text-transform: uppercase;
         margin-bottom: 5px;
     }
+
+    &.loading {
+        .sound-admin-option {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+    }
 }
 
 .sound-admin-option {

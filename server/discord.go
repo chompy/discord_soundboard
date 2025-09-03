@@ -51,6 +51,9 @@ func (d *Discord) Close() error {
 func (d *Discord) VoiceSession(guildID string) *DiscordVoiceSession {
 	for _, vs := range d.voiceSessions {
 		if vs.GuildID == guildID {
+			if !vs.IsActive {
+				go vs.start()
+			}
 			return vs
 		}
 	}

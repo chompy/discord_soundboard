@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { api, Guild } from '../api';
 import Select from './select';
 
@@ -8,17 +8,17 @@ export type GuildSelectProperties = {
 
 function GuildSelect({ onChange }: GuildSelectProperties) {
     const [guilds, setGuilds] = React.useState<Guild[]>([]);
-    React.useEffect(() => {
+    useEffect(() => {
         api.listGuilds().then((guilds) => {
-            onChange(guilds[0]);
             setGuilds(guilds);
+            onChange?.(guilds[0]);
         });
     }, []);
 
     return (
         <Select
             options={guilds.map((guild) => guild.name)}
-            onChange={(index) => onChange(guilds[index])}
+            onChange={(index) => onChange?.(guilds[index])}
         />
     );
 }

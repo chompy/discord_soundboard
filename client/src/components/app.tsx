@@ -1,5 +1,5 @@
 import '../scss/app.scss';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Button from './button';
 import GuildSelect from './guild_select';
 import Modal from './modal';
@@ -7,6 +7,7 @@ import SoundAdmin from './sound_admin';
 import { api, Guild } from '../api';
 import { isNotAuthenticatedError, log } from '../utils';
 import SoundPlayer from './sound_player';
+import useSoundList from '../hooks/sound_list';
 
 export type ModalType = 'admin' | null;
 
@@ -16,6 +17,26 @@ function AppComponent() {
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [activeGuild, setActiveGuild] = useState<Guild | null>(null);
     const [modalHeight, setModalHeight] = useState(0);
+    const soundList = useSoundList(activeGuild && activeGuild.id);
+
+    const stopSounds = useCallback(() => {
+        activeGuild && api.stopSounds(activeGuild.id);
+    }, [activeGuild]);
+
+    const onPressStop = useCallback(
+        (e: KeyboardEvent) => {
+            if (e.key === 's') stopSounds();
+        },
+        [activeGuild]
+    );
+
+    useEffect(() => {
+        activeGuild && log(`Set active guild to ${activeGuild.id}`);
+        window.addEventListener('keypress', onPressStop);
+        return () => {
+            window.removeEventListener('keypress', onPressStop);
+        };
+    }, [activeGuild]);
 
     useEffect(() => {
         api.me()
@@ -31,10 +52,6 @@ function AppComponent() {
                 setError(`${error}`);
             });
     }, []);
-
-    useEffect(() => {
-        activeGuild && log(`Set active guild to ${activeGuild.id}`);
-    }, [activeGuild]);
 
     if (error) {
         return <div className="error">{error}</div>;
@@ -52,7 +69,11 @@ function AppComponent() {
                 onResize={setModalHeight}
             >
                 {activeGuild && (
-                    <SoundAdmin guildId={activeGuild.id} height={modalHeight} />
+                    <SoundAdmin
+                        soundList={soundList}
+                        guildId={activeGuild.id}
+                        height={modalHeight}
+                    />
                 )}
             </Modal>
 
@@ -62,13 +83,15 @@ function AppComponent() {
             </div>
 
             <div className="options">
+                <Button label="Refresh" onClick={() => soundList.refresh()} />
+                <Button label="Stop All [s]" onClick={stopSounds} />
                 <Button
                     label="Edit Sounds"
                     onClick={() => setActiveModal('admin')}
                 />
             </div>
 
-            {activeGuild && <SoundPlayer guildId={activeGuild.id} />}
+            {activeGuild && <SoundPlayer soundList={soundList} />}
         </div>
     );
 }
