@@ -29,7 +29,7 @@ func databaseCreateUserTable(db *sql.DB) error {
 	return err
 }
 
-func databaseFetchUserByID(db *sql.DB, ID string) (User, error) {
+func DatabaseGetUserByID(db *sql.DB, ID string) (User, error) {
 	user := User{}
 	stmt := "SELECT * FROM users WHERE id = ?"
 	rows, err := db.Query(stmt, ID)

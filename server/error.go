@@ -3,7 +3,8 @@ package main
 import "errors"
 
 // application configuration errors
-var errNoToken = errors.New("missing discord bot token")
+var errMissingBotToken = errors.New("missing discord bot token")
+var errMissingAuthConfig = errors.New("missing discord auth client id and/or client secret")
 
 // auth errors
 var errNotAuthenticated = errors.New("not authenticated")

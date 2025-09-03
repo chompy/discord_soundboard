@@ -17,18 +17,17 @@ import (
 
 const sessionCookieName = "_dsb_session"
 
-var (
-	sessionSecret                   = []byte("--sound!fb7ccb7f8015e01fb23bbe08084f913748cdc2c5193d1f0cdb1a82903e1bae67")
-	discordAuth   *disgoauth.Client = disgoauth.Init(&disgoauth.Client{
-		ClientID:     os.Getenv("DISCORD_OAUTH_CLIENT_ID"),
-		ClientSecret: os.Getenv("DISCORD_OAUTH_CLIENT_SECRET"),
-		RedirectURI:  os.Getenv("DISCORD_OAUTH_REDIRECT_URL"),
+func initDiscordAuth(config *Config) *disgoauth.Client {
+	return disgoauth.Init(&disgoauth.Client{
+		ClientID:     config.DiscordAuthClientId,
+		ClientSecret: config.DiscordAuthClientSecret,
+		RedirectURI:  os.Getenv("SOUNDBOARD_DISCORD_OAUTH_REDIRECT_URL"), // TODO
 		Scopes:       []string{disgoauth.ScopeIdentify, disgoauth.ScopeGuilds},
 	})
-)
+}
 
-func generateSessionToken(user *User) string {
-	hashSalt := fmt.Sprintf("%s-%s-%d-%d", sessionSecret, user.ID, user.Created.UnixMicro(), time.Now().UnixMicro())
+func generateSessionToken(config *Config, user *User) string {
+	hashSalt := fmt.Sprintf("%s-%s-%d-%d", config.SessionSecret, user.ID, user.Created.UnixMicro(), time.Now().UnixMicro())
 	hash := sha512.New()
 	hash.Write([]byte(hashSalt))
 	data := fmt.Sprintf("%s|%x", user.ID, hash.Sum(nil))
@@ -56,7 +55,7 @@ func checkUser(db *sql.DB, r *http.Request) (User, error) {
 		return User{}, errNotAuthenticated
 	}
 
-	user, err := databaseFetchUserByID(db, userId)
+	user, err := DatabaseGetUserByID(db, userId)
 	if err != nil {
 		return user, errNotAuthenticated
 	}
@@ -69,7 +68,7 @@ func checkUser(db *sql.DB, r *http.Request) (User, error) {
 }
 
 func checkUserGuild(db *sql.DB, userID string, guildID string) error {
-	hasGuild, err := userHasGuild(db, userID, guildID)
+	hasGuild, err := DatabaseUserHasGuild(db, userID, guildID)
 	if err != nil {
 		return err
 	}
@@ -98,61 +97,53 @@ func fetchUserGuilds(accessToken string) (io.Reader, error) {
 	return resp.Body, nil
 }
 
-func httpLogin(w http.ResponseWriter, r *http.Request) {
-	discordAuth.RedirectHandler(w, r, "")
+func httpLogin(app *App, w http.ResponseWriter, r *http.Request) error {
+	app.DiscordAuth.RedirectHandler(w, r, "")
+	return nil
 }
 
-func httpLoginRedirect(w http.ResponseWriter, r *http.Request) {
-
+func httpLoginRedirect(app *App, w http.ResponseWriter, r *http.Request) error {
 	code := r.URL.Query().Get("code")
 
 	if r.URL.Query().Get("error") != "" || code == "" {
-		httpError(w, errInvalidAuth)
-		return
+		return errInvalidAuth
 	}
 
-	accessToken, _ := discordAuth.GetOnlyAccessToken(code)
+	accessToken, _ := app.DiscordAuth.GetOnlyAccessToken(code)
 	userData, _ := disgoauth.GetUserData(accessToken)
 
-	db, err := databaseOpen()
+	db, err := app.Database()
 	if err != nil {
-		httpError(w, errDatabaseOpen)
-		return
+		return errDatabaseOpen
 	}
 	defer db.Close()
 
 	userId, userIdOk := userData["id"].(string)
 	userName, userNameOk := userData["username"].(string)
 	if !userIdOk || !userNameOk || userId == "" {
-		httpError(w, errInvalidAuth)
-		return
+		return errInvalidAuth
 	}
 
 	log.Printf("- User #%s (%s) has logged in", userId, userData["username"])
 
-	user, err := databaseFetchUserByID(db, userId)
+	user, err := DatabaseGetUserByID(db, userId)
 	if err != nil {
-		httpError(w, errDatabaseRead)
-		return
+		return errDatabaseRead
 	}
 
 	user.ID = userId
 	user.Name = userName
-	user.SessionToken = generateSessionToken(&user)
+	user.SessionToken = generateSessionToken(&app.Config, &user)
 	if err := user.Save(db); err != nil {
-		httpError(w, errDatabaseWrite)
-		return
+		return errDatabaseWrite
 	}
 
 	guildsReader, err := fetchUserGuilds(accessToken)
 	if err != nil {
-		log.Println(err)
-		httpError(w, errInvalidAuth)
-		return
+		return errInvalidAuth
 	}
-	if err := importUserGuilds(db, guildsReader, user.ID); err != nil {
-		httpError(w, errDatabaseWrite)
-		return
+	if err := databaseImportUserGuilds(db, guildsReader, user.ID); err != nil {
+		return errDatabaseWrite
 	}
 
 	cookie := http.Cookie{
@@ -166,4 +157,5 @@ func httpLoginRedirect(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &cookie)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	return nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -59,7 +60,7 @@ func handleHttpApi(app *App, callback func(r *ApiRequest) (any, error, error)) f
 		//log.Println("> R:%05d | %s %s", out.ID, r.Method, r.URL.Path)
 
 		var err error
-		apiReq.DB, err = databaseOpen()
+		apiReq.DB, err = app.Database()
 		if err != nil {
 			httpApiError(&apiReq, err, errDatabaseOpen)
 			return
@@ -106,7 +107,7 @@ func httpApiListGuildCategories(r *ApiRequest) (any, error, error) {
 		return nil, err, errNotAuthorized
 	}
 
-	categories, err := databaseFetchCategoriesByGuildID(r.DB, guildId)
+	categories, err := DatabaseGetCategoriesByGuildID(r.DB, guildId)
 	if err != nil {
 		return nil, err, errDatabaseRead
 	}
@@ -124,7 +125,7 @@ func httpApiListGuildSounds(r *ApiRequest) (any, error, error) {
 		return nil, err, errNotAuthorized
 	}
 
-	sounds, err := databaseFetchSoundsByGuildID(r.DB, guildId)
+	sounds, err := DatabaseGetSoundsByGuildID(r.DB, guildId)
 	if err != nil {
 		return nil, err, errDatabaseRead
 	}
@@ -185,7 +186,7 @@ func httpApiModCategory(r *ApiRequest) (any, error, error) {
 				return nil, err, errNotAuthorized
 			}
 
-			category, err := databaseFetchCategoryByID(r.DB, params.ID)
+			category, err := DatabaseGetCategoryByID(r.DB, params.ID)
 			if err != nil {
 				return nil, err, errDatabaseRead
 			}
@@ -206,7 +207,7 @@ func httpApiModCategory(r *ApiRequest) (any, error, error) {
 				return nil, err, errInvalidParam
 			}
 
-			category, err := databaseFetchCategoryByID(r.DB, params.ID)
+			category, err := DatabaseGetCategoryByID(r.DB, params.ID)
 			if err != nil {
 				return nil, err, errDatabaseRead
 			}
@@ -236,7 +237,7 @@ func httpApiSortCategory(r *ApiRequest) (any, error, error) {
 		return nil, err, errInvalidParam
 	}
 
-	if err := databaseSortCategories(r.DB, params.GuildID, params.IDs...); err != nil {
+	if err := DatabaseSortCategories(r.DB, params.GuildID, params.IDs...); err != nil {
 		return nil, err, errDatabaseWrite
 	}
 
@@ -272,7 +273,7 @@ func httpApiModSound(r *ApiRequest) (any, error, error) {
 				return nil, errMissingParam, errMissingParam
 			}
 
-			category, err := databaseFetchCategoryByID(r.DB, params.CategoryID)
+			category, err := DatabaseGetCategoryByID(r.DB, params.CategoryID)
 			if err != nil {
 				return nil, err, errDatabaseRead
 
@@ -300,12 +301,12 @@ func httpApiModSound(r *ApiRequest) (any, error, error) {
 				return nil, errMissingParam, errMissingParam
 			}
 
-			category, err := databaseFetchCategoryByID(r.DB, params.CategoryID)
+			category, err := DatabaseGetCategoryByID(r.DB, params.CategoryID)
 			if err != nil {
 				return nil, err, errDatabaseRead
 			}
 
-			sound, err := databaseFetchSoundByID(r.DB, params.ID)
+			sound, err := DatabaseGetSoundByID(r.DB, params.ID)
 			if err != nil {
 				return nil, err, errDatabaseRead
 			}
@@ -331,12 +332,12 @@ func httpApiModSound(r *ApiRequest) (any, error, error) {
 				return nil, err, errInvalidParam
 			}
 
-			sound, err := databaseFetchSoundByID(r.DB, params.ID)
+			sound, err := DatabaseGetSoundByID(r.DB, params.ID)
 			if err != nil {
 				return nil, err, errDatabaseRead
 			}
 
-			category, err := databaseFetchCategoryByID(r.DB, sound.CategoryID)
+			category, err := DatabaseGetCategoryByID(r.DB, sound.CategoryID)
 			if err != nil {
 				return nil, err, errDatabaseRead
 			}
@@ -366,7 +367,7 @@ func httpApiSortSound(r *ApiRequest) (any, error, error) {
 		return nil, err, errInvalidData
 	}
 
-	category, err := databaseFetchCategoryByID(r.DB, params.CategoryID)
+	category, err := DatabaseGetCategoryByID(r.DB, params.CategoryID)
 	if err != nil {
 		return nil, err, errDatabaseRead
 	}
@@ -375,7 +376,7 @@ func httpApiSortSound(r *ApiRequest) (any, error, error) {
 		return nil, err, errNotAuthorized
 	}
 
-	if err := databaseSortSounds(r.DB, params.CategoryID, params.IDs...); err != nil {
+	if err := DatabaseSortSounds(r.DB, params.CategoryID, params.IDs...); err != nil {
 		return nil, err, errDatabaseWrite
 	}
 
@@ -385,7 +386,7 @@ func httpApiSortSound(r *ApiRequest) (any, error, error) {
 func httpApiUploadSound(r *ApiRequest) (any, error, error) {
 	// TODO more security to prevert user from uploading anything they want
 
-	soundReader := NewSoundReader(r.R.Body)
+	soundReader := NewSoundReader(&r.App.Config, r.R.Body)
 	hash, err := soundReader.Save()
 	if err != nil {
 		return nil, err, errSoundWrite
@@ -404,12 +405,12 @@ func httpApiPlaySound(r *ApiRequest) (any, error, error) {
 		return nil, err, errInvalidParam
 	}
 
-	sound, guildId, err := databaseFetchSoundByIDAndUser(r.DB, params.ID, r.User.ID)
+	sound, guildId, err := DatabaseGetSoundByIDAndUser(r.DB, params.ID, r.User.ID)
 	if err != nil {
 		return nil, err, errDatabaseRead
 	}
 	if sound.Hash != "" {
-		soundReader, err := NewSoundReaderFromStorage(sound.Hash)
+		soundReader, err := NewSoundReaderFromStorage(&r.App.Config, sound.Hash)
 		if err != nil {
 			return nil, err, errSoundRead
 		}
@@ -443,6 +444,14 @@ func httpApiStopSounds(r *ApiRequest) (any, error, error) {
 	return nil, nil, nil
 }
 
+func handleHttp(app *App, callback func(app *App, w http.ResponseWriter, r *http.Request) error) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := callback(app, w, r); err != nil {
+			httpError(w, err)
+		}
+	}
+}
+
 func httpError(w http.ResponseWriter, err error) {
 	statusCode := errHttpStatusCodeMap[err]
 	if statusCode == 0 {
@@ -454,12 +463,12 @@ func httpError(w http.ResponseWriter, err error) {
 }
 
 func RunWebServer(app *App) error {
-
+	// static
 	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("web"))))
-
-	http.HandleFunc("/login", httpLogin)
-	http.HandleFunc("/redirect", httpLoginRedirect)
-
+	// auth
+	http.HandleFunc("/login", handleHttp(app, httpLogin))
+	http.HandleFunc("/redirect", handleHttp(app, httpLoginRedirect))
+	// api
 	http.HandleFunc("/api/me", handleHttpApi(app, httpApiMe))
 	http.HandleFunc("/api/list_user_guilds", handleHttpApi(app, httpApiListGuilds))
 	http.HandleFunc("/api/list_guild_categories", handleHttpApi(app, httpApiListGuildCategories))
@@ -472,6 +481,6 @@ func RunWebServer(app *App) error {
 	http.HandleFunc("/api/play_sound", handleHttpApi(app, httpApiPlaySound))
 	http.HandleFunc("/api/stop_sounds", handleHttpApi(app, httpApiStopSounds))
 
-	log.Println("> Start web server at http://localhost:8081")
-	return http.ListenAndServe(":8081", nil)
+	log.Printf("> Start web server at http://0.0.0.0:%d", app.Config.HTTPPort)
+	return http.ListenAndServe(fmt.Sprintf(":%d", app.Config.HTTPPort), nil)
 }

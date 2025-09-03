@@ -12,21 +12,22 @@ import (
 )
 
 type SoundReader struct {
+	config *Config
 	reader io.ReadCloser
 }
 
-func NewSoundReader(reader io.ReadCloser) *SoundReader {
-	return &SoundReader{reader: reader}
+func NewSoundReader(config *Config, reader io.ReadCloser) *SoundReader {
+	return &SoundReader{config: config, reader: reader}
 }
 
-func NewSoundReaderFromStorage(hash string) (*SoundReader, error) {
+func NewSoundReaderFromStorage(config *Config, hash string) (*SoundReader, error) {
 	log.Printf("> Load sound %s.", hash)
-	storePath := path.Join(storagePath, hash+".dat")
+	storePath := path.Join(config.StoragePath, hash+".dat")
 	file, err := os.Open(storePath)
 	if err != nil {
 		return nil, err
 	}
-	return NewSoundReader(file), nil
+	return NewSoundReader(config, file), nil
 }
 
 func (s *SoundReader) NextFrame() ([]byte, error) {
@@ -54,7 +55,7 @@ func (s *SoundReader) NextFrame() ([]byte, error) {
 }
 
 func (s *SoundReader) Save() (string, error) {
-	file, err := os.CreateTemp(storagePath, "_*")
+	file, err := os.CreateTemp(s.config.StoragePath, "_*")
 	if err != nil {
 		return "", err
 	}
@@ -86,7 +87,7 @@ func (s *SoundReader) Save() (string, error) {
 
 	file.Close()
 	hashStr := hex.EncodeToString(hash.Sum(nil))
-	storePath := path.Join(storagePath, hashStr+".dat")
+	storePath := path.Join(s.config.StoragePath, hashStr+".dat")
 
 	if _, err := os.Stat(storePath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {

@@ -31,7 +31,7 @@ func databaseCreateCategoryTable(db *sql.DB) error {
 	return err
 }
 
-func databaseFetchCategoryByID(db *sql.DB, ID int64) (Category, error) {
+func DatabaseGetCategoryByID(db *sql.DB, ID int64) (Category, error) {
 	category := Category{}
 	stmt := "SELECT * FROM categories WHERE id = ?"
 	rows, err := db.Query(stmt, ID)
@@ -46,7 +46,7 @@ func databaseFetchCategoryByID(db *sql.DB, ID int64) (Category, error) {
 	return category, nil
 }
 
-func databaseFetchCategoriesByGuildID(db *sql.DB, guildID string) ([]Category, error) {
+func DatabaseGetCategoriesByGuildID(db *sql.DB, guildID string) ([]Category, error) {
 	out := make([]Category, 0)
 
 	stmt := "SELECT * FROM categories WHERE guild_id = ? ORDER BY sort, id ASC"
@@ -67,7 +67,7 @@ func databaseFetchCategoriesByGuildID(db *sql.DB, guildID string) ([]Category, e
 	return out, nil
 }
 
-func databaseDeleteCategoryByID(db *sql.DB, ID int64) error {
+func DatabaseDeleteCategoryByID(db *sql.DB, ID int64) error {
 	stmt := `DELETE FROM sounds WHERE category_id = ?`
 	_, err := db.Exec(stmt, ID)
 	if err != nil {
@@ -79,7 +79,7 @@ func databaseDeleteCategoryByID(db *sql.DB, ID int64) error {
 	return err
 }
 
-func databaseSortCategories(db *sql.DB, guildID string, IDs ...int64) error {
+func DatabaseSortCategories(db *sql.DB, guildID string, IDs ...int64) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -124,5 +124,5 @@ func (c *Category) Save(db *sql.DB) error {
 }
 
 func (c *Category) Delete(db *sql.DB) error {
-	return databaseDeleteCategoryByID(db, c.ID)
+	return DatabaseDeleteCategoryByID(db, c.ID)
 }

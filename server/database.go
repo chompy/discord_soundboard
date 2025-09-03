@@ -10,17 +10,17 @@ import (
 
 const databaseFilename = "database.sqlite"
 
-func databaseOpen() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", path.Join(storagePath, databaseFilename))
+func databaseOpen(config *Config) (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", path.Join(config.StoragePath, databaseFilename))
 	if err != nil {
 		return nil, err
 	}
 	return db, nil
 }
 
-func databaseInit() error {
+func databaseInit(config *Config) error {
 	log.Println("> Initalize database.")
-	db, err := databaseOpen()
+	db, err := databaseOpen(config)
 	if err != nil {
 		return err
 	}

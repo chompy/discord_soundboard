@@ -10,37 +10,32 @@ import (
 type Discord struct {
 	session       *discordgo.Session
 	voiceSessions []*DiscordVoiceSession
-	Guilds        []*discordgo.UserGuild
+	guilds        []*discordgo.UserGuild
 }
 
-func NewDiscord() (*Discord, error) {
+func initDiscord(config *Config) (*Discord, error) {
 	log.Println("> Init Discord bot.")
-	if discordBotToken == "" {
-		return nil, errNoToken
-	}
 
-	session, err := discordgo.New("Bot " + discordBotToken)
+	session, err := discordgo.New("Bot " + config.DiscordBotToken)
 	if err != nil {
 		return nil, err
 	}
 
-	d := &Discord{session: session, voiceSessions: make([]*DiscordVoiceSession, 0), Guilds: make([]*discordgo.UserGuild, 0)}
+	d := &Discord{session: session, voiceSessions: make([]*DiscordVoiceSession, 0), guilds: make([]*discordgo.UserGuild, 0)}
 	d.session.StateEnabled = true
 	d.session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildVoiceStates | discordgo.IntentGuildMembers
 	d.session.AddHandler(d.onDiscordReady)
 	d.session.AddHandler(d.onDiscordVoiceStateUpdate)
 	// TODO do we need a handler to know when bot is added to a server?
 
-	log.Println("  - Open session")
 	if err := d.session.Open(); err != nil {
 		return nil, err
 	}
 
-	if err := d.fetchGuilds(); err != nil {
+	if _, err := d.AvailableGuilds(); err != nil {
 		return nil, err
 	}
 
-	log.Println("  - Done")
 	return d, nil
 }
 
@@ -62,14 +57,30 @@ func (d *Discord) VoiceSession(guildID string) *DiscordVoiceSession {
 	return vs
 }
 
+// AvailableGuilds fetches guilds that the bot is in.
+func (d *Discord) AvailableGuilds() ([]*discordgo.UserGuild, error) {
+	if len(d.guilds) > 0 {
+		return d.guilds, nil
+	}
+	log.Println("> Fetch bot guild list")
+	var err error
+	d.guilds, err = d.session.UserGuilds(200, "", "", false)
+	if err != nil {
+		return nil, err
+	}
+	// TODO add pagination support?
+	log.Printf("  - %d guild(s) found", len(d.guilds))
+	return d.guilds, nil
+}
+
 func (d *Discord) UserAvailableGuilds(db *sql.DB, userId string) ([]*discordgo.UserGuild, error) {
-	userGuilds, err := fetchUserGuildsByUserID(db, userId)
+	userGuilds, err := DatabaseGetUserGuildsByUserID(db, userId)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]*discordgo.UserGuild, 0)
 	for _, userGuild := range userGuilds {
-		for _, botGuild := range d.Guilds {
+		for _, botGuild := range d.guilds {
 			if userGuild.GuildID == botGuild.ID {
 				out = append(out, botGuild)
 			}
@@ -87,18 +98,6 @@ func (d *Discord) UserVoiceChannel(guildID string, userId string) (string, error
 		return "", err
 	}
 	return vs.ChannelID, nil
-}
-
-func (d *Discord) fetchGuilds() error {
-	log.Println("  - Fetch bot guild list")
-	guilds, err := d.session.UserGuilds(200, "", "", false)
-	if err != nil {
-		return err
-	}
-	// TODO add pagination support?
-	d.Guilds = append(d.Guilds, guilds...)
-	log.Printf("  - %d guild(s) found", len(d.Guilds))
-	return nil
 }
 
 func (d *Discord) onDiscordReady(s *discordgo.Session, event *discordgo.Ready) {

@@ -33,7 +33,7 @@ func databaseCreateSoundTable(db *sql.DB) error {
 	return err
 }
 
-func databaseFetchSoundByID(db *sql.DB, ID int64) (Sound, error) {
+func DatabaseGetSoundByID(db *sql.DB, ID int64) (Sound, error) {
 	sound := Sound{}
 
 	stmt := `SELECT * FROM sounds WHERE id = ? ORDER BY sort, id ASC`
@@ -49,7 +49,7 @@ func databaseFetchSoundByID(db *sql.DB, ID int64) (Sound, error) {
 	return sound, nil
 }
 
-func databaseFetchSoundsByGuildID(db *sql.DB, guildID string) ([]Sound, error) {
+func DatabaseGetSoundsByGuildID(db *sql.DB, guildID string) ([]Sound, error) {
 	out := make([]Sound, 0)
 
 	stmt := `
@@ -77,7 +77,7 @@ func databaseFetchSoundsByGuildID(db *sql.DB, guildID string) ([]Sound, error) {
 	return out, nil
 }
 
-func databaseSortSounds(db *sql.DB, categoryID int64, IDs ...int64) error {
+func DatabaseSortSounds(db *sql.DB, categoryID int64, IDs ...int64) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func databaseSortSounds(db *sql.DB, categoryID int64, IDs ...int64) error {
 	return tx.Commit()
 }
 
-func databaseFetchSoundByIDAndUser(db *sql.DB, ID int64, userId string) (Sound, string, error) {
+func DatabaseGetSoundByIDAndUser(db *sql.DB, ID int64, userId string) (Sound, string, error) {
 	stmt := `
 	SELECT s.id, s.name, s.hash, s.category_id, s.sort, s.created, s.updated, c.guild_id
 	FROM sounds AS s

@@ -43,7 +43,7 @@ func databaseCreateUserGuildTable(db *sql.DB) error {
 	return err
 }
 
-func fetchUserGuildsByUserID(db *sql.DB, userId string) ([]UserGuild, error) {
+func DatabaseGetUserGuildsByUserID(db *sql.DB, userId string) ([]UserGuild, error) {
 	out := make([]UserGuild, 0)
 
 	stmt := `
@@ -72,13 +72,13 @@ func fetchUserGuildsByUserID(db *sql.DB, userId string) ([]UserGuild, error) {
 	return out, nil
 }
 
-func databaseDeleteUserGuildByID(db *sql.DB, ID int64) error {
+func DatabaseDeleteUserGuildByID(db *sql.DB, ID int64) error {
 	stmt := `DELETE FROM user_guilds WHERE id = ?`
 	_, err := db.Exec(stmt, ID)
 	return err
 }
 
-func userHasGuild(db *sql.DB, userId string, guildId string) (bool, error) {
+func DatabaseUserHasGuild(db *sql.DB, userId string, guildId string) (bool, error) {
 	stmt := `
 	SELECT COUNT(*) FROM user_guilds
 	WHERE user_id = ? AND guild_id = ?
@@ -123,10 +123,10 @@ func (u *UserGuild) Save(db *sql.DB) error {
 }
 
 func (u *UserGuild) Delete(db *sql.DB) error {
-	return databaseDeleteUserGuildByID(db, u.ID)
+	return DatabaseDeleteUserGuildByID(db, u.ID)
 }
 
-func importUserGuilds(db *sql.DB, reader io.Reader, userId string) error {
+func databaseImportUserGuilds(db *sql.DB, reader io.Reader, userId string) error {
 	// TODO: add clean up process to remove user from guilds they are no longer in
 	rawData, err := io.ReadAll(reader)
 	if err != nil {
