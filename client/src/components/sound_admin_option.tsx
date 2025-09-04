@@ -18,6 +18,9 @@ function SoundAdminOption({
 }: SoundAdminOptionProperties) {
     return (
         <div className={`sound-admin-option ${active && 'active'}`}>
+            <SortableKnob>
+                <div className="handle"></div>
+            </SortableKnob>
             <span
                 title={label}
                 onClick={(e) => {

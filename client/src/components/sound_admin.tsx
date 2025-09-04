@@ -5,7 +5,7 @@ import Button from './button';
 import SoundAdminOption from './sound_admin_option';
 import { sound as soundUtils } from '../sound';
 import { error } from '../utils';
-import SortableList, { SortableItem } from 'react-easy-sort';
+import SortableList, { SortableItem, SortableKnob } from 'react-easy-sort';
 import { SoundList } from '../hooks/sound_list';
 
 export type SoundAdminProperties = {
@@ -16,17 +16,12 @@ export type SoundAdminProperties = {
 
 function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
     const [isLoading, setIsLoading] = useState(false);
-    const {
-        isLoading: isSoundListLoading,
-        categories,
-        sounds,
-        localRefresh,
-    } = soundList;
+    const { isLoading: isSoundListLoading, categories, sounds } = soundList;
     const [activeCategory, setActiveCategory] = useState<Category | null>(null);
 
     useEffect(() => {
         if (!activeCategory) {
-            setActiveCategory(categories[0]);
+            setActiveCategory(categories.get()[0]);
         }
     }, [categories]);
 
@@ -38,23 +33,22 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
         const name = prompt('Enter category name:')?.trim();
         if (!name) return;
         setIsLoading(true);
-        categories.push(
+        categories.update(
             await api.saveCategory({
                 name,
                 guildId,
-                sort: (categories.length + 1) * 1000,
+                sort: (categories.length() + 1) * 1000,
             })
         );
-        localRefresh();
         setIsLoadingTimeout();
     };
 
     const deleteCategory = async (category: Category) => {
         if (isLoading || isSoundListLoading) return;
 
-        const catSounds = sounds.filter(
-            (sound) => sound.categoryId === category.id
-        );
+        const catSounds = sounds
+            .get()
+            .filter((sound) => sound.categoryId === category.id);
 
         if (
             catSounds.length > 0 &&
@@ -67,14 +61,9 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
 
         setIsLoading(true);
 
-        const index = categories.findIndex(
-            (iterCategory) => iterCategory.id === category.id
-        );
-        categories.splice(index, 1);
-
+        categories.delete(category);
         await api.deleteCategory(category);
 
-        localRefresh();
         setIsLoadingTimeout();
     };
 
@@ -83,29 +72,24 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
         const name = prompt('Enter category name:', category.name)?.trim();
         if (!name) return;
         setIsLoading(true);
+
         category.name = name;
+        categories.update(category);
         await api.saveCategory(category);
-        localRefresh();
+
         setIsLoadingTimeout();
     };
 
     const onSortCategory = async (fromIndex: number, toIndex: number) => {
         if (isLoading || isSoundListLoading) return;
-
         setIsLoading(true);
-        const category = categories[fromIndex];
-        const moveTo = categories[toIndex];
-
-        categories.forEach((category, index) => {
-            category.sort = index + 1 * 1000;
-        });
-        category.sort = moveTo.sort + (fromIndex < toIndex ? 1 : -1);
-        categories.sort((a, b) => a.sort - b.sort);
-
-        await api.sortCategories(categories);
-        localRefresh();
+        const newCategories = categories.moveIndex(fromIndex, toIndex);
+        await api.sortCategories(newCategories);
         setIsLoadingTimeout();
     };
+
+    const listCategorySounds = (category: Category) =>
+        sounds.get().filter((sound) => sound.categoryId === activeCategory.id);
 
     const addSound = async () => {
         if (isLoading || isSoundListLoading) return;
@@ -137,10 +121,9 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
                 name: fileElement.files[0].name,
                 hash,
                 categoryId: activeCategory.id,
-                sort: (sounds.length + 1) * 1000,
+                sort: (sounds.length() + 1) * 1000,
             });
-            sounds.push(sound);
-            localRefresh();
+            sounds.update(sound);
         }
         setIsLoadingTimeout();
     };
@@ -150,9 +133,11 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
         const name = prompt('Enter sound name:', sound.name)?.trim();
         if (!name) return;
         setIsLoading(true);
+
         sound.name = name;
+        sounds.update(sound);
         await api.saveSound(sound);
-        localRefresh();
+
         setIsLoadingTimeout();
     };
 
@@ -160,14 +145,9 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
         if (isLoading || isSoundListLoading) return;
         setIsLoading(true);
 
-        const index = sounds.findIndex(
-            (iterSound) => iterSound.id === sound.id
-        );
-        sounds.splice(index, 1);
-
+        sounds.delete(sound);
         await api.deleteSound(sound);
 
-        localRefresh();
         setIsLoadingTimeout();
     };
 
@@ -176,24 +156,15 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
 
         setIsLoading(true);
 
-        sounds.forEach((sound, index) => {
-            sound.sort = index + 1 * 1000;
-        });
-
-        const categorySounds = sounds.filter(
-            (sound) => sound.categoryId === activeCategory.id
-        );
-        const moveFrom = categorySounds[fromIndex];
-        const moveAfter = categorySounds[toIndex];
-
-        moveFrom.sort = moveAfter.sort + (fromIndex < toIndex ? 1 : -1);
-
-        sounds.sort((a, b) => a.sort - b.sort);
+        const categorySounds = listCategorySounds(activeCategory);
+        const fromSound = categorySounds[fromIndex];
+        const toSound = categorySounds[toIndex];
 
         await api.sortSounds(
-            sounds.filter((sound) => sound.categoryId === activeCategory.id)
+            sounds
+                .move(fromSound, toSound)
+                .filter((sound) => sound.categoryId === activeCategory.id)
         );
-        localRefresh();
         setIsLoadingTimeout();
     };
 
@@ -222,7 +193,7 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
                         draggedItemClassName="category-dragged"
                         lockAxis="y"
                     >
-                        {categories.map((category) => (
+                        {categories.get().map((category) => (
                             <SortableItem key={`sort-category-${category.id}`}>
                                 <div>
                                     <SoundAdminOption
@@ -253,23 +224,18 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
                         onSortEnd={onSortSound}
                         className="sound-sort"
                     >
-                        {sounds
-                            .filter(
-                                (sound) =>
-                                    sound.categoryId === activeCategory.id
-                            )
-                            .map((sound) => (
-                                <SortableItem key={`sort-sound-${sound.id}`}>
-                                    <div>
-                                        <SoundAdminOption
-                                            key={`sound-${sound.id}`}
-                                            label={sound.name}
-                                            onEdit={() => renameSound(sound)}
-                                            onDelete={() => deleteSound(sound)}
-                                        />
-                                    </div>
-                                </SortableItem>
-                            ))}
+                        {listCategorySounds(activeCategory).map((sound) => (
+                            <SortableItem key={`sort-sound-${sound.id}`}>
+                                <div>
+                                    <SoundAdminOption
+                                        key={`sound-${sound.id}`}
+                                        label={sound.name}
+                                        onEdit={() => renameSound(sound)}
+                                        onDelete={() => deleteSound(sound)}
+                                    />
+                                </div>
+                            </SortableItem>
+                        ))}
                     </SortableList>
                 )}
             </div>

@@ -20,6 +20,9 @@ export type Category = {
     updated?: Date;
 };
 
+export const isCategory = (value: unknown) =>
+    typeof value === 'object' && value && 'guildId' in value;
+
 export type Sound = {
     id?: number;
     name: string;
@@ -29,6 +32,9 @@ export type Sound = {
     created?: Date;
     updated?: Date;
 };
+
+export const isSound = (value: unknown) =>
+    typeof value === 'object' && value && 'hash' in value;
 
 export const api = {
     async _fetch(
@@ -124,7 +130,9 @@ export const api = {
         log(`Sort sounds for category ${categoryId}`);
         await api._fetch('/api/sort_category_sounds', 'POST', {
             categoryId,
-            ids: sounds.map((sound) => sound.id),
+            ids: sounds.flatMap((sound) =>
+                sound.categoryId === categoryId ? [sound.id] : []
+            ),
         });
     },
 

@@ -12,11 +12,12 @@ function SoundPlayer({ soundList }: SoundPlayerProperties) {
     return (
         <div className="sound-player">
             <div className="categories">
-                {categories.map((category) => (
+                {categories.get().map((category) => (
                     <div key={`category-${category.id}`} className="category">
                         <div className="category-name">{category.name}</div>
                         <div className="sounds">
                             {sounds
+                                .get()
                                 .filter(
                                     (sound) => sound.categoryId === category.id
                                 )

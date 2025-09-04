@@ -34,11 +34,11 @@
 }
 
 .sound-admin-option {
-    padding: 10px;
+    padding: 10px 10px 10px 20px;
     margin: 5px 15px 5px 0px;
     background-color: vars.$primary-color;
-    cursor: pointer;
     user-select: none;
+    position: relative;
 
     span {
         display: inline-block;
@@ -53,9 +53,28 @@
         display: block;
         float: right;
         margin-left: 3px;
+        cursor: pointer;
     }
+
+    border: 2px solid transparent;
     &.active {
         border: 2px solid vars.$foreground-color;
-        border-right: 10px solid vars.$foreground-color;
     }
+
+    .handle {
+        display: inline-block;
+        cursor: pointer;
+        border-left: 3px dotted vars.$foreground-color;
+        border-right: 3px dotted vars.$foreground-color;
+        width: 2px;
+        height: 34px;
+        position: absolute;
+        left: 4px;
+        top: 4px;
+        opacity: 0.6;
+    }
+}
+
+.categories .sound-admin-option span {
+    cursor: pointer;
 }

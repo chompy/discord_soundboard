@@ -1,5 +1,5 @@
 import '../scss/app.scss';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Button from './button';
 import GuildSelect from './guild_select';
 import Modal from './modal';
@@ -17,7 +17,7 @@ function AppComponent() {
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [activeGuild, setActiveGuild] = useState<Guild | null>(null);
     const [modalHeight, setModalHeight] = useState(0);
-    const soundList = useSoundList(activeGuild && activeGuild.id);
+    const soundList = useSoundList(activeGuild?.id);
 
     const stopSounds = useCallback(() => {
         activeGuild && api.stopSounds(activeGuild.id);
