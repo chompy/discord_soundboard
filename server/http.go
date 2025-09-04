@@ -129,7 +129,31 @@ func httpApiListGuildSounds(r *ApiRequest) (any, error, error) {
 	if err != nil {
 		return nil, err, errDatabaseRead
 	}
+
 	return map[string]any{"success": true, "sounds": sounds}, nil, nil
+}
+
+func httpApiListGuildCategoriesAndSounds(r *ApiRequest) (any, error, error) {
+	guildId := r.R.URL.Query().Get("guild")
+	if guildId == "" {
+		return nil, errMissingParam, errMissingParam
+	}
+
+	if err := checkUserGuild(r.DB, r.User.ID, guildId); err != nil {
+		return nil, err, errNotAuthorized
+	}
+
+	categories, err := DatabaseGetCategoriesByGuildID(r.DB, guildId)
+	if err != nil {
+		return nil, err, errDatabaseRead
+	}
+	sounds, err := DatabaseGetSoundsByGuildID(r.DB, guildId)
+	if err != nil {
+		return nil, err, errDatabaseRead
+	}
+
+	return map[string]any{"success": true, "categories": categories, "sounds": sounds}, nil, nil
+
 }
 
 type httpDeleteCategory struct {
@@ -473,6 +497,8 @@ func RunWebServer(app *App) error {
 	http.HandleFunc("/api/list_user_guilds", handleHttpApi(app, httpApiListGuilds))
 	http.HandleFunc("/api/list_guild_categories", handleHttpApi(app, httpApiListGuildCategories))
 	http.HandleFunc("/api/list_guild_sounds", handleHttpApi(app, httpApiListGuildSounds))
+	http.HandleFunc("/api/list_guild_categories_and_sounds", handleHttpApi(app, httpApiListGuildCategoriesAndSounds))
+
 	http.HandleFunc("/api/category", handleHttpApi(app, httpApiModCategory))
 	http.HandleFunc("/api/sort_guild_categories", handleHttpApi(app, httpApiSortCategory))
 	http.HandleFunc("/api/sound", handleHttpApi(app, httpApiModSound))

@@ -17,10 +17,8 @@ function useSoundList(guildId?: string) {
     const refresh = useCallback(async () => {
         if (!guildId) return;
         setIsLoading(true);
-        const [fetchedCategories, fetchedSounds] = await Promise.all([
-            api.listCategories(guildId),
-            api.listSounds(guildId),
-        ]);
+        const [fetchedCategories, fetchedSounds] =
+            await api.listCategoriesAndSounds(guildId);
         categories.update(...fetchedCategories);
         sounds.update(...fetchedSounds);
         setIsLoading(false);

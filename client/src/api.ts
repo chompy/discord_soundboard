@@ -67,20 +67,14 @@ export const api = {
         return guilds;
     },
 
-    async listCategories(guildId: string): Promise<Category[]> {
-        log(`Fetch categories for guild ${guildId}`);
-        const { categories } = await api._fetch(
-            '/api/list_guild_categories?guild=' + guildId
+    async listCategoriesAndSounds(
+        guildId: string
+    ): Promise<[Category[], Sound[]]> {
+        log(`Fetch categories and sounds for guild ${guildId}`);
+        const { categories, sounds } = await api._fetch(
+            '/api/list_guild_categories_and_sounds?guild=' + guildId
         );
-        return categories;
-    },
-
-    async listSounds(guildId: string): Promise<Sound[]> {
-        log(`Fetch sounds for guild ${guildId}`);
-        const { sounds } = await api._fetch(
-            '/api/list_guild_sounds?guild=' + guildId
-        );
-        return sounds;
+        return [categories, sounds];
     },
 
     async uploadSound(data: ArrayBuffer): Promise<string> {
