@@ -1,1 +1,0 @@
-This is the backend server, written in Golang, for the Discord Soundboard.

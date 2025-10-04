@@ -1,0 +1,22 @@
+module github.com/chompy/discord_soundboard
+
+go 1.25.1
+
+require (
+	github.com/bwmarrin/discordgo v0.29.0
+	github.com/joho/godotenv v1.5.1
+	github.com/jonas747/ogg v0.0.0-20161220051205-b4f6f4cf3757
+	github.com/mattn/go-sqlite3 v1.14.32
+	github.com/realTristan/disgoauth v1.0.2
+	github.com/rs/zerolog v1.34.0
+)
+
+require (
+	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
+	golang.org/x/crypto v0.42.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+)
+
+replace github.com/bwmarrin/discordgo => github.com/ozraru/discordgo v0.26.2-0.20250917201847-e6ee88434661

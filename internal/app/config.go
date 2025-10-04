@@ -1,7 +1,7 @@
-package main
+package app
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -16,6 +16,7 @@ var (
 
 type Config struct {
 	HTTPPort                int
+	AuthRedirectURI         string
 	StoragePath             string
 	SessionSecret           string
 	DiscordBotToken         string
@@ -24,14 +25,8 @@ type Config struct {
 }
 
 func LoadConfig() (Config, error) {
-
-	log.Println("> Load config")
-
 	for _, envPath := range envPathes {
-		err := godotenv.Load(envPath)
-		if err != nil && err != os.ErrNotExist {
-			log.Printf("  - Error while reading %s: %s", envPath, err)
-		}
+		godotenv.Load(envPath)
 	}
 
 	config := Config{}
@@ -39,7 +34,10 @@ func LoadConfig() (Config, error) {
 	if config.HTTPPort == 0 {
 		config.HTTPPort = 8081
 	}
-
+	config.AuthRedirectURI = os.Getenv(envVarPrefix + "REDIRECT_URI")
+	if config.AuthRedirectURI == "" {
+		config.AuthRedirectURI = fmt.Sprintf("http://localhost:%d/redirect", config.HTTPPort)
+	}
 	config.StoragePath = os.Getenv(envVarPrefix + "STORAGE_PATH")
 	if config.StoragePath == "" {
 		config.StoragePath = "storage"
