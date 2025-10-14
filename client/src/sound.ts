@@ -5,10 +5,10 @@ export const sound = {
         log('Convert sound');
 
         return new Promise<ArrayBuffer>(async (resolve, reject) => {
+            const ctx = new AudioContext();
+
             // decode sound input
-            const decodedBuffer = await new AudioContext().decodeAudioData(
-                soundInput
-            );
+            const decodedBuffer = await ctx.decodeAudioData(soundInput);
 
             // setup opus encoder
             const encodedChunks: ArrayBuffer[] = [];
@@ -21,6 +21,7 @@ export const sound = {
                 },
                 error: reject,
             });
+
             encoder.configure({
                 codec: 'opus',
                 bitrate: 128000,

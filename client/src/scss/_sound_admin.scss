@@ -8,8 +8,10 @@
     .sounds {
         display: inline-block;
         vertical-align: top;
-        width: 250px;
         margin-bottom: 15px;
+        overflow-x: hidden;
+        overflow-y: scroll;
+        width: 55%;
     }
     .categories {
         border-right: 1px solid vars.$foreground-color;
@@ -17,6 +19,7 @@
         height: 500px;
         overflow-x: hidden;
         overflow-y: scroll;
+        width: 40%;
     }
     .section-title {
         font-size: 12px;
