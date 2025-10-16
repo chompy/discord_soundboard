@@ -1,6 +1,5 @@
 - Manage user permissions
 - Check + enforce user permissions
-- Combine fetching categories and sounds in to one api endpoint
 - Validate uploaded sounds, size limit, frame size limit, etc
 - Clean up routine to remove unused sounds
 - Add flag to allow all categories + sounds to be global to all Discord servers

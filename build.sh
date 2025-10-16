@@ -1,12 +1,17 @@
-#!/bin/sh
-mkdir -p dist/bin
-mkdir dist/storage
-cp .env.local dist/.env
+#!/usr/bin/env bash
 
-cd client
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+mkdir -p $SCRIPT_DIR/dist/bin
+mkdir -p $SCRIPT_DIR/dist/storage
+cp $SCRIPT_DIR/.env.local $SCRIPT_DIR/dist/.env
+
+echo "> BUILD WEB CLIENT"
+cd $SCRIPT_DIR/client
 npm run prod
-cp index.html ../dist/web
+cp index.html $SCRIPT_DIR/dist/web
 
-cd ../server
-go build -o server
-mv server ../dist/bin
+echo ""
+echo "> BUILD SERVER"
+cd $SCRIPT_DIR
+go build -o $SCRIPT_DIR/dist/bin/server

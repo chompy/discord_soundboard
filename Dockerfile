@@ -1,17 +1,16 @@
 FROM node:alpine AS node
 COPY . /app
 WORKDIR /app
-RUN cd client && npm i -g typescript esbuild && npm i && cd /app && sh compile_client_js.sh
+RUN cd client && npm run prod
 
-FROM golang:1.22.3-alpine AS golang
+FROM golang:1.25.3-alpine AS golang
 COPY . /app
 WORKDIR /app
-RUN sh compile_server.sh
+RUN go build -o server
 
-#FROM scratch
-FROM golang:1.22.3-alpine
-COPY --from=node /app/client/app.js /app/client/app.js
-COPY --from=node /app/client/page.html.tmpl /app/client/page.html.tmpl
-COPY --from=golang /app/discord_soundboard_server /app/discord_soundboard_server
+FROM gcr.io/distroless/static
+#FROM golang:1.25.3-alpine
+COPY --from=node /app/dist/web /app/web
+COPY --from=golang /app/server /app/bin/server
 WORKDIR /app
-CMD ["/app/discord_soundboard_server"]
+CMD ["/app/bin/server"]
