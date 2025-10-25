@@ -1,7 +1,7 @@
 FROM node:alpine AS node
 COPY . /app
 WORKDIR /app
-RUN cd client && npm run prod
+RUN cd client && npm i -D webpack-cli && npm run prod && cp index.html ../dist/web
 
 FROM golang:1.25.3-alpine AS golang
 COPY . /app
