@@ -6,7 +6,9 @@ RUN cd client && npm i -D webpack-cli && npm run prod && cp index.html ../dist/w
 FROM golang:1.25.3-alpine AS golang
 COPY . /app
 WORKDIR /app
-RUN go build -o server
+ENV CGO_ENABLED=1
+ENV CC=gcc
+RUN apk add --no-cache musl-dev build-base git && go build -ldflags="-linkmode external -extldflags '-static'" -o server
 
 FROM gcr.io/distroless/static
 #FROM golang:1.25.3-alpine
