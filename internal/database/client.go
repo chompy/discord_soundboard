@@ -28,6 +28,13 @@ type Client struct {
 func New(path string, logger *zerolog.Logger) (*Client, error) {
 	logger.Info().Str("databasePath", path).Msgf("Open database at %s", path)
 	conn, err := sql.Open("sqlite3", path)
+	logger.Info().Msg("Initalize database")
+	for _, table := range tables {
+		logger.Info().Str("tableName", table.name()).Msgf("Create table %s", table.name())
+		if err := table.init(conn); err != nil {
+			return nil, err
+		}
+	}
 	return &Client{logger: logger, conn: conn}, err
 }
 
@@ -39,20 +46,6 @@ func (c *Client) Close() error {
 		}
 	}
 	c.conn = nil
-	return nil
-}
-
-func (c *Client) Init() error {
-	if c.conn == nil {
-		return errDatabaseClosed
-	}
-	c.logger.Info().Msg("Initalize database")
-	for _, table := range tables {
-		c.logger.Info().Str("tableName", table.name()).Msgf("Create table %s", table.name())
-		if err := table.init(c.conn); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

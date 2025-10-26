@@ -107,7 +107,7 @@ func httpLoginRedirect(rctx *RequestContext) (string, error, error) {
 	rctx.Logger.Info().Str("userID", userID).Msgf("User #%s (%s) has logged in", userID, userName)
 
 	user, err := rctx.Services.Database.FetchUserByID(userID)
-	if err != nil {
+	if err != nil && !database.IsRecordNotFoundError(err) {
 		return "", err, errDatabaseRead
 	}
 
