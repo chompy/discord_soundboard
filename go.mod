@@ -12,6 +12,7 @@ require (
 )
 
 require (
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
@@ -19,4 +20,4 @@ require (
 	golang.org/x/sys v0.36.0 // indirect
 )
 
-replace github.com/bwmarrin/discordgo => github.com/ozraru/discordgo v0.26.2-0.20250917201847-e6ee88434661
+replace github.com/bwmarrin/discordgo => github.com/yeongaori/discordgo-fork v0.0.0-20260308044327-f9e3cff6c311
