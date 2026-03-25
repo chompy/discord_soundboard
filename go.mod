@@ -5,7 +5,6 @@ go 1.25.1
 require (
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/joho/godotenv v1.5.1
-	github.com/jonas747/ogg v0.0.0-20161220051205-b4f6f4cf3757
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/realTristan/disgoauth v1.0.2
 	github.com/rs/zerolog v1.34.0

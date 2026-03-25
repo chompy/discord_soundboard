@@ -5,12 +5,6 @@ import (
 	"io"
 )
 
-type FileInfo struct {
-	Size int64
-	Path string
-	Hash string
-}
-
 func NextFrame(reader io.Reader) ([]byte, error) {
 	frameSizeBytes := make([]byte, 2)
 	_, err := io.ReadAtLeast(reader, frameSizeBytes, 2)

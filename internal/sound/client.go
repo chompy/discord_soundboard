@@ -8,6 +8,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type FileInfo struct {
+	Size int64
+	Path string
+	Hash string
+}
+
 type Client struct {
 	storagePath string
 	logger      *zerolog.Logger
