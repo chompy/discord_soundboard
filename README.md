@@ -1,4 +1,6 @@
-# Simple Discord Soundboard
-## By Nathan Ogden
+# (Simple?) Discord Soundboard
+**By Nathan Ogden**
 
-Still a WIP, will add more information once it is in a more complete state.
+Discord soundboard bot with a web interface for playing and managing sounds.
+
+...TODO write more documentation...
