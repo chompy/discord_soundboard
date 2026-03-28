@@ -21,10 +21,20 @@ h1 {
     background-color: vars.$primary-color;
     color: vars.$foreground-color;
     margin-right: 8px;
+    box-shadow: 2px 2px 0px #bcbcbc;
 }
 
-#app .options {
-    border-bottom: 1px solid vars.$foreground-color;
-    padding-bottom: 10px;
-    margin-bottom: 10px;
+#app {
+    .options {
+        border-bottom: 1px solid vars.$foreground-color;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+    }
+    .filter {
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        input {
+            width: 99%;
+        }
+    }
 }

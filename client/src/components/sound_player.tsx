@@ -1,12 +1,46 @@
 import { SoundList } from '../hooks/sound_list';
-import { api } from '../api';
+import { Sound, api } from '../api';
+import { useCallback, useEffect, useState } from 'react';
+import { getSoundKeybinds, setSoundKeybind } from '../utils';
 
 export type SoundPlayerProperties = {
     soundList: SoundList;
+    enableKeyBinding?: boolean;
+    onSelect?: (sound: Sound | null) => void;
 };
 
-function SoundPlayer({ soundList }: SoundPlayerProperties) {
+function SoundPlayer({ soundList, enableKeyBinding, onSelect }: SoundPlayerProperties) {
     const { isLoading, categories, sounds } = soundList;
+    const [selectedSound, setSelectedSound] = useState<Sound | null>(null);
+
+    const onKeyDown = useCallback((e: KeyboardEvent) => {
+        enableKeyBinding && selectedSound && setSoundKeybind(e.key, selectedSound.id);
+        setSelectedSound(null);
+    }, [selectedSound, enableKeyBinding])
+    const enterSoundSelect = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+        if ('getAttribute' in e.target && typeof e.target.getAttribute === 'function') {
+            const soundId = parseInt(e.target.getAttribute('data-sound-id'))
+            const sound = soundList.sounds.get().find((sound) => sound.id === soundId);
+            sound && setSelectedSound(sound);
+            sound && onSelect?.(sound)
+        }
+    }
+    const exitSoundSelect = () => {
+        setSelectedSound(null);
+        onSelect?.(null);
+    }
+    useEffect(() => {
+        window.addEventListener('keydown', onKeyDown);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown)
+        }
+    }, [selectedSound])
+
+    const soundKeybinds = Object.entries(getSoundKeybinds());
+    const findSoundKeybind = (sound: Sound) => {
+        const res = soundKeybinds.find(([key, soundId]) => sound.id === soundId);
+        return res ? res[0] : null;
+    }
 
     if (isLoading) return;
     return (
@@ -31,6 +65,7 @@ function SoundPlayer({ soundList }: SoundPlayerProperties) {
                                         </span>
                                         <span className="sound-options">
                                             <a
+                                                className='pure-button'
                                                 href="#"
                                                 onClick={(e) => {
                                                     e.preventDefault();
@@ -38,6 +73,16 @@ function SoundPlayer({ soundList }: SoundPlayerProperties) {
                                                 }}
                                             >
                                                 Play
+                                            </a>
+                                            <a
+                                                className={`sound-keybind${selectedSound && selectedSound.id === sound.id ? ' selected' : ''}`}
+                                                href="#"
+                                                data-sound-id={sound.id}
+                                                onMouseEnter={enterSoundSelect}
+                                                onMouseLeave={exitSoundSelect}
+                                                onClick={(e) => e.preventDefault()}
+                                            >
+                                                {findSoundKeybind(sound) ?? '-'}
                                             </a>
                                         </span>
                                     </div>

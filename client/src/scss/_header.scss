@@ -1,4 +1,10 @@
 #app .header {
+    h1 {
+        img {
+            height: 42px;
+            vertical-align: -10px;
+        }
+    }
     select {
         width: 200px;
         float: right;

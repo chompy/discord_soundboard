@@ -1,11 +1,11 @@
 import '../scss/app.scss';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Button from './button';
 import GuildSelect from './guild_select';
 import Modal from './modal';
 import SoundAdmin from './sound_admin';
-import { api, Guild } from '../api';
-import { isNotAuthenticatedError, log } from '../utils';
+import { api, Guild, Sound } from '../api';
+import { getSoundKeybindForKey, isNotAuthenticatedError, log } from '../utils';
 import SoundPlayer from './sound_player';
 import useSoundList from '../hooks/sound_list';
 
@@ -17,25 +17,47 @@ function AppComponent() {
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [activeGuild, setActiveGuild] = useState<Guild | null>(null);
     const [modalHeight, setModalHeight] = useState(0);
+    const [keyPressEnabled, setKeyPressEnabled] = useState(true);
+    const [playerKeyPressEnabled, setPlayerKeyPressEnabled] = useState(true);
     const soundList = useSoundList(activeGuild?.id);
+    const filterInputRef = useRef<HTMLInputElement>(null);
 
     const stopSounds = useCallback(() => {
         activeGuild && api.stopSounds(activeGuild.id);
     }, [activeGuild]);
 
-    const onPressStop = useCallback(
-        (e: KeyboardEvent) => {
-            if (e.key === 's') stopSounds();
-        },
-        [activeGuild]
-    );
+    const onKeyDown = useCallback((e: KeyboardEvent) => {
+        if (!keyPressEnabled) return;
+        switch (e.key) {
+            case 's':
+                // stop all sound playback
+                stopSounds();
+                break;
+            case 'Escape':
+                // clear filter
+                filterInputRef.current.value = '';
+                soundList.sounds.setFilter('');
+                break;
+            default:
+                // play sound from keybind
+                const soundId = getSoundKeybindForKey(e.key);
+                if (soundId !== null) {
+                    const sound = soundList.sounds.get().find((sound) => sound.id === soundId);
+                    sound && api.playSound(sound)
+                }
+                break;
+        }
+    }, [keyPressEnabled, activeGuild, soundList])
+
+    useEffect(() => {
+        window.addEventListener('keydown', onKeyDown)
+        return () => {
+            window.removeEventListener('keydown', onKeyDown)
+        }
+    }, [keyPressEnabled, activeGuild, soundList]);
 
     useEffect(() => {
         activeGuild && log(`Set active guild to ${activeGuild.id}`);
-        window.addEventListener('keypress', onPressStop);
-        return () => {
-            window.removeEventListener('keypress', onPressStop);
-        };
     }, [activeGuild]);
 
     useEffect(() => {
@@ -52,6 +74,12 @@ function AppComponent() {
                 setError(`${error}`);
             });
     }, []);
+
+    const onFilter = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        soundList.sounds.setFilter(e.target.value)
+    }, [soundList])
+
+    const onKeyBindSoundSelect = (sound: Sound | null) => setKeyPressEnabled(!sound);
 
     if (error) {
         return <div className="error">{error}</div>;
@@ -79,7 +107,7 @@ function AppComponent() {
 
             <div className="header">
                 <GuildSelect onChange={setActiveGuild} />
-                <h1>Chompy's Discord Soundboard</h1>
+                <h1><img src="/static/favicon.png" alt="Chompy" /> Soundboard</h1>
             </div>
 
             <div className="options">
@@ -91,7 +119,19 @@ function AppComponent() {
                 />
             </div>
 
-            {activeGuild && <SoundPlayer soundList={soundList} />}
+            <div className="filter">
+                <input 
+                    id="filter"
+                    type="text"
+                    ref={filterInputRef}
+                    onFocus={() => { setKeyPressEnabled(false); setPlayerKeyPressEnabled(false); }}
+                    onBlur={() => { setKeyPressEnabled(true); setPlayerKeyPressEnabled(true); }}
+                    onChange={onFilter}
+                    placeholder='Filter'
+                />
+            </div>
+
+            {activeGuild && <SoundPlayer soundList={soundList} enableKeyBinding={playerKeyPressEnabled} onSelect={onKeyBindSoundSelect} />}
         </div>
     );
 }

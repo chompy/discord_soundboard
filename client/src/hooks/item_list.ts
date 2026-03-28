@@ -10,10 +10,11 @@ export type ItemList<T> = {
     clear: () => void;
 };
 
-function useItemList<T>(onCompare: (a: T, b: T) => boolean) {
+function useItemList<T>(onCompare: (a: T, b: T) => boolean, onFilter?: (filter: string, item: T) => boolean) {
     const [items, setItems] = useState<T[]>([]);
+    const [filter, setFilter] = useState<string>('')
 
-    const get = useCallback(() => Array.from(items), [items]);
+    const get = useCallback(() => Array.from(items.filter((item) => onFilter ? onFilter(filter, item) : true)), [items, filter]);
     const update = useCallback(
         (...items: T[]) => {
             const newItems = get();
@@ -78,6 +79,7 @@ function useItemList<T>(onCompare: (a: T, b: T) => boolean) {
         moveIndex,
         move,
         clear,
+        setFilter
     };
 }
 

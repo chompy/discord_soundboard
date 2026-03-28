@@ -50,6 +50,15 @@
                     margin-left: 3px;
                     vertical-align: 3px;
                 }
+                a.sound-keybind {
+                    background: #4a4a4a;
+                    border-radius: 10px;
+                    min-width: 10px;
+                    text-align: center;
+                    &.selected {
+                        outline: 2px dashed #1dec00;                        
+                    }
+                }
             }
         }
     }

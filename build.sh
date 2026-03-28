@@ -11,6 +11,7 @@ echo "> BUILD WEB CLIENT"
 cd $SCRIPT_DIR/client
 npm run prod
 cp index.html $SCRIPT_DIR/dist/web/
+cp -r static $SCRIPT_DIR/dist/web/static
 
 echo ""
 echo "> BUILD SERVER"

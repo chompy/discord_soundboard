@@ -1,6 +1,7 @@
 @use 'vars';
 
 #app .modal {
+    z-index: 99;
     background-color: vars.$modal-outer-background-color;
     position: fixed;
     width: 100%;
