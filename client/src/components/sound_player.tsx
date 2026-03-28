@@ -17,18 +17,7 @@ function SoundPlayer({ soundList, enableKeyBinding, onSelect }: SoundPlayerPrope
         enableKeyBinding && selectedSound && setSoundKeybind(e.key, selectedSound.id);
         setSelectedSound(null);
     }, [selectedSound, enableKeyBinding])
-    const enterSoundSelect = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
-        if ('getAttribute' in e.target && typeof e.target.getAttribute === 'function') {
-            const soundId = parseInt(e.target.getAttribute('data-sound-id'))
-            const sound = soundList.sounds.get().find((sound) => sound.id === soundId);
-            sound && setSelectedSound(sound);
-            sound && onSelect?.(sound)
-        }
-    }
-    const exitSoundSelect = () => {
-        setSelectedSound(null);
-        onSelect?.(null);
-    }
+
     useEffect(() => {
         window.addEventListener('keydown', onKeyDown);
         return () => {
@@ -60,7 +49,7 @@ function SoundPlayer({ soundList, enableKeyBinding, onSelect }: SoundPlayerPrope
                                         key={`sound-${sound.id}`}
                                         className="sound"
                                     >
-                                        <span className="sound-name">
+                                        <span className="sound-name" title={sound.name}>
                                             {sound.name}
                                         </span>
                                         <span className="sound-options">
@@ -78,8 +67,8 @@ function SoundPlayer({ soundList, enableKeyBinding, onSelect }: SoundPlayerPrope
                                                 className={`sound-keybind${selectedSound && selectedSound.id === sound.id ? ' selected' : ''}`}
                                                 href="#"
                                                 data-sound-id={sound.id}
-                                                onMouseEnter={enterSoundSelect}
-                                                onMouseLeave={exitSoundSelect}
+                                                onMouseEnter={() => {setSelectedSound(sound); onSelect?.(sound)}}
+                                                onMouseLeave={() => {setSelectedSound(null); onSelect?.(null)}}
                                                 onClick={(e) => e.preventDefault()}
                                             >
                                                 {findSoundKeybind(sound) ?? '-'}

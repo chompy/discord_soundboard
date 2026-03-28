@@ -79,7 +79,10 @@ function AppComponent() {
         soundList.sounds.setFilter(e.target.value)
     }, [soundList])
 
-    const onKeyBindSoundSelect = (sound: Sound | null) => setKeyPressEnabled(!sound);
+    const onKeyBindSoundSelect = (sound: Sound | null) => {
+        setKeyPressEnabled(!sound);
+        filterInputRef.current.blur()
+    }
 
     if (error) {
         return <div className="error">{error}</div>;
