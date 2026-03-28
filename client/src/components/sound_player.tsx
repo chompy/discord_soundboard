@@ -1,6 +1,6 @@
 import { SoundList } from '../hooks/sound_list';
 import { Sound, api } from '../api';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSoundKeybinds, setSoundKeybind } from '../utils';
 
 export type SoundPlayerProperties = {
@@ -12,7 +12,26 @@ export type SoundPlayerProperties = {
 function SoundPlayer({ soundList, enableKeyBinding, onSelect }: SoundPlayerProperties) {
     const { isLoading, categories, sounds } = soundList;
     const [selectedSound, setSelectedSound] = useState<Sound | null>(null);
+    const [nameMaxWidth, setNameMaxWidth] = useState(250);
 
+    // resize name width
+    const elementRef = useRef<HTMLDivElement>(null);
+    const resize = useCallback(() => {
+        if (!elementRef.current) return;
+        const soundElement = elementRef.current.getElementsByClassName('sound')[0];
+        if (!soundElement) return;
+        const soundOptionsElement = soundElement.getElementsByClassName('sound-options')[0] as HTMLSpanElement;
+        setNameMaxWidth(soundElement.clientWidth - soundOptionsElement.clientWidth - 30);
+    }, [elementRef.current])
+    useEffect(() => {
+        resize();
+        window.addEventListener('resize', resize);
+        return () => {
+            window.removeEventListener('resize', resize);
+        }
+    }, [elementRef.current]);
+
+    // set sound keybinds
     const onKeyDown = useCallback((e: KeyboardEvent) => {
         enableKeyBinding && selectedSound && setSoundKeybind(e.key, selectedSound.id);
         setSelectedSound(null);
@@ -24,7 +43,6 @@ function SoundPlayer({ soundList, enableKeyBinding, onSelect }: SoundPlayerPrope
             window.removeEventListener('keydown', onKeyDown)
         }
     }, [selectedSound])
-
     const soundKeybinds = Object.entries(getSoundKeybinds());
     const findSoundKeybind = (sound: Sound) => {
         const res = soundKeybinds.find(([key, soundId]) => sound.id === soundId);
@@ -33,7 +51,7 @@ function SoundPlayer({ soundList, enableKeyBinding, onSelect }: SoundPlayerPrope
 
     if (isLoading) return;
     return (
-        <div className="sound-player">
+        <div ref={elementRef} className="sound-player">
             <div className="categories">
                 {categories.get().map((category) => (
                     <div key={`category-${category.id}`} className="category">
@@ -49,7 +67,7 @@ function SoundPlayer({ soundList, enableKeyBinding, onSelect }: SoundPlayerPrope
                                         key={`sound-${sound.id}`}
                                         className="sound"
                                     >
-                                        <span className="sound-name" title={sound.name}>
+                                        <span className="sound-name" title={sound.name} style={{maxWidth: `${nameMaxWidth}px`}}>
                                             {sound.name}
                                         </span>
                                         <span className="sound-options">
