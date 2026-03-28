@@ -99,6 +99,19 @@ func (c *Client) FetchSoundByID(ID int64) (Sound, error) {
 	return data[0], nil
 }
 
+func (c *Client) FetchSoundsByHash(hash string) ([]Sound, error) {
+	if c.conn == nil {
+		return nil, errDatabaseClosed
+	}
+	stmt := fmt.Sprintf(`SELECT * FROM %s WHERE hash = ?`, Sound{}.name())
+	rows, err := c.conn.Query(stmt, hash)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return soundReadRows(rows)
+}
+
 func (c *Client) FetchSoundsByGuildID(guildID string) ([]Sound, error) {
 	if c.conn == nil {
 		return nil, errDatabaseClosed

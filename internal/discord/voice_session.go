@@ -103,7 +103,7 @@ func (v *VoiceSession) processBuffer(ctx context.Context) error {
 		}
 
 		// read next frame, send to voice session
-		frame, err := sound.NextFrame(&v.buffer)
+		frame, err := sound.ReadOpusFrame(&v.buffer)
 
 		if err != nil {
 			if err == io.EOF {

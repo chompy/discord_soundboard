@@ -57,6 +57,12 @@ func (c *Client) Load(hash string) (*os.File, error) {
 	return os.Open(filePath)
 }
 
+func (c *Client) Delete(hash string) error {
+	filePath := c.getHashPath(hash)
+	c.logger.Info().Str("fileHash", hash).Msgf("Delete sound file at %s", filePath)
+	return os.Remove(filePath)
+}
+
 func (c *Client) getHashPath(hash string) string {
 	return path.Join(c.storagePath, hash+".dat")
 }

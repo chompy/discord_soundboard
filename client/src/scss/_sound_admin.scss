@@ -78,6 +78,22 @@
     }
 }
 
+@media screen and (max-width: 600px) {
+    .sound-admin-option {
+        span {
+            width: 50%;
+        }
+    }
+}
+
+@media screen and (max-width: 430px) {
+    .sound-admin-option {
+        span {
+            width: 35%;
+        }
+    }
+}
+
 .categories .sound-admin-option span {
     cursor: pointer;
 }

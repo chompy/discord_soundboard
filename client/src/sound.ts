@@ -1,10 +1,14 @@
 import { log } from './utils';
 
+const soundBitrate = 128000
+const soundSampleRate = 48000
+
 export const sound = {
     convert: (soundInput: ArrayBuffer) => {
         log('Convert sound');
 
         return new Promise<ArrayBuffer>(async (resolve, reject) => {
+
             const ctx = new AudioContext();
 
             // decode sound input
@@ -24,9 +28,9 @@ export const sound = {
 
             encoder.configure({
                 codec: 'opus',
-                bitrate: 128000,
-                sampleRate: decodedBuffer.sampleRate,
-                numberOfChannels: decodedBuffer.numberOfChannels,
+                bitrate: soundBitrate,
+                sampleRate: soundSampleRate,
+                numberOfChannels: 2,
             });
 
             // interleave two channel (stero) audio
@@ -38,7 +42,7 @@ export const sound = {
             const rightChannelData =
                 decodedBuffer.numberOfChannels >= 2
                     ? decodedBuffer.getChannelData(1)
-                    : null;
+                    : leftChannelData;
             const interleavedData = new Float32Array(
                 leftChannelData.length +
                     (rightChannelData ? rightChannelData.length : 0)
@@ -49,16 +53,14 @@ export const sound = {
                 src++, dst += rightChannelData ? 2 : 1
             ) {
                 interleavedData[dst] = leftChannelData[src];
-                if (rightChannelData) {
-                    interleavedData[dst + 1] = rightChannelData[src];
-                }
+                interleavedData[dst + 1] = rightChannelData[src];
             }
 
             const audioData = new AudioData({
                 format: 'f32',
-                numberOfChannels: decodedBuffer.numberOfChannels,
+                numberOfChannels: 2,
                 numberOfFrames: decodedBuffer.length,
-                sampleRate: decodedBuffer.sampleRate,
+                sampleRate: soundSampleRate,
                 timestamp: 0,
                 data: interleavedData,
             });
@@ -79,3 +81,4 @@ export const sound = {
         });
     },
 };
+

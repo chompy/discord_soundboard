@@ -7,6 +7,7 @@ export type SoundAdminOptionProperties = {
     onClick?: () => void;
     onEdit?: () => void;
     onDelete?: () => void;
+    onDownload?: () => void;
 };
 
 function SoundAdminOption({
@@ -15,9 +16,10 @@ function SoundAdminOption({
     onClick,
     onEdit,
     onDelete,
+    onDownload,
 }: SoundAdminOptionProperties) {
     return (
-        <div className={`sound-admin-option ${active && 'active'}`}>
+        <div className={`sound-admin-option${active ? ' active' : ''}`}>
             <SortableKnob>
                 <div className="handle"></div>
             </SortableKnob>
@@ -32,15 +34,19 @@ function SoundAdminOption({
             </span>
             <a
                 href="#"
+                title='Delete'
                 onClick={(e) => {
                     e.preventDefault();
-                    onDelete?.();
+                    if (confirm(`Are you sure you want to delete '${label}'?`)) {
+                        onDelete?.();
+                    }
                 }}
             >
                 ❌
             </a>
             <a
                 href="#"
+                title='Rename'
                 onClick={(e) => {
                     e.preventDefault();
                     onEdit?.();
@@ -48,6 +54,19 @@ function SoundAdminOption({
             >
                 ✏️
             </a>
+            {onDownload && 
+            <a
+                href="#"
+                title='Download'
+                onClick={(e) => {
+                    e.preventDefault();
+                    onDownload?.();
+                }}
+            >
+                💾
+            </a>}
+            
+
         </div>
     );
 }

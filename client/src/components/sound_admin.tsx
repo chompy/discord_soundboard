@@ -151,6 +151,16 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
         setIsLoadingTimeout();
     };
 
+    const downloadSound = async (sound: Sound) => {        
+        const data = await api.downloadSound(sound)
+        const blob = new Blob([data], {type: "application/octet-stream"})
+        const audioURL = window.URL.createObjectURL(blob);
+        const link = document.createElement("a")
+        link.href = audioURL;
+        link.download = `${sound.name}.dat`
+        link.click();
+    }
+
     const onSortSound = async (fromIndex: number, toIndex: number) => {
         if (isLoading || isSoundListLoading) return;
 
@@ -232,6 +242,7 @@ function SoundAdmin({ guildId, height, soundList }: SoundAdminProperties) {
                                         label={sound.name}
                                         onEdit={() => renameSound(sound)}
                                         onDelete={() => deleteSound(sound)}
+                                        onDownload={() => downloadSound(sound)}
                                     />
                                 </div>
                             </SortableItem>

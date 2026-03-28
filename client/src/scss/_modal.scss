@@ -16,8 +16,16 @@
         overflow-y: scroll;
         margin: auto;
         padding: 0 15px;
-        margin-top: 10%;
+        margin-top: 80px;
         color: vars.$modal-foreground-color;
         border: 1px solid vars.$modal-border-color;
+    }
+}
+
+@media screen and (max-width: 750px) {
+    #app .modal {
+        .modal-inner {
+            width: 90%;
+        }
     }
 }

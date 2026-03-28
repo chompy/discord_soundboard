@@ -4,7 +4,8 @@
     margin-top: 20px;
 
     .categories {
-        column-count: 2;
+        column-count: 4;
+        column-gap: 30px;
 
         .category {
             break-inside: avoid-column;
@@ -19,24 +20,62 @@
 
     .sounds {
         .sound {
-            min-height: 28px;
+            position: relative;
+            padding: 3px 5px;
+            min-height: 24px;
+
+            &:nth-child(odd) {
+                background: #272727;
+            }
+
             .sound-name {
+                min-width: 250px;
+                max-width: 85%;
+                margin-top: 2px;
                 display: inline-block;
-                width: 250px;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
-            .sound-options a {
-                display: inline-block;
-                background-color: vars.$primary-color;
-                padding: 3px 5px;
-                color: vars.$foreground-color;
-                font-size: 14px;
-                text-decoration: none;
-                margin-left: 3px;
-                vertical-align: 3px;
+            .sound-options {
+                position: absolute;
+                right: 5px; 
+                a {
+                    display: inline-block;
+                    background-color: vars.$primary-color;
+                    padding: 3px 5px;
+                    color: vars.$foreground-color;
+                    font-size: 14px;
+                    text-decoration: none;
+                    margin-left: 3px;
+                    vertical-align: 3px;
+                }
             }
         }
     }
 }
+
+@media screen and (max-width: 1360px) {
+    .sound-player {
+        .categories {
+            column-count: 3;
+        }
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    .sound-player {
+        .categories {
+            column-count: 2;
+        }
+    }
+}
+
+@media screen and (max-width: 700px) {
+    .sound-player {
+        .categories {
+            column-count: 1;
+        }
+    }
+}
+

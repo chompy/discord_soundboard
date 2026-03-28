@@ -61,7 +61,7 @@ func (c *Client) Delete(table Table) error {
 	if c.conn == nil {
 		return errDatabaseClosed
 	}
-	c.logger.Info().Any("rowID", table.id()).Str("tableName", table.name()).Msgf("Delete row %s from table %s", table.id(), table.name())
+	c.logger.Info().Any("rowID", table.id()).Str("tableName", table.name()).Msgf("Delete row %d from table %s", table.id(), table.name())
 	return table.delete(c.conn)
 }
 

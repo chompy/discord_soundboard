@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { log } from '../utils';
 
 export type ModalProperties = {
     children: React.JSX.Element;
@@ -17,14 +16,26 @@ function Modal({ children, isOpen, close, onResize }: ModalProperties) {
     };
 
     useEffect(() => {
-        window.addEventListener('resize', () => {
-            setHeight(getModalHeight());
-        });
+        const callback = () => {setHeight(getModalHeight());}
+        window.addEventListener('resize', callback);
+        return () => {
+            window.removeEventListener('resize', callback);
+        }
     }, []);
 
     useEffect(() => {
         onResize?.(height);
     }, [height]);
+
+    useEffect(() => {
+        const callback = (e: KeyboardEvent) => {
+            e.key === 'Escape' && close();
+        }
+        window.addEventListener('keydown', callback)
+        return () => {
+            window.removeEventListener('keydown', callback);
+        }
+    }, [isOpen])
 
     const onClickOutsideClose = (e: object) => {
         if (
@@ -34,7 +45,7 @@ function Modal({ children, isOpen, close, onResize }: ModalProperties) {
             'className' in e.target &&
             e.target.className == 'modal'
         ) {
-            close?.();
+            close();
         }
     };
 

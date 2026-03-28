@@ -140,6 +140,23 @@ export const api = {
         await api._fetch('/api/play_sound', 'POST', { id: sound.id });
     },
 
+    async downloadSound(sound: Sound): Promise<ArrayBuffer> {
+        log(`Download sound ${sound.name} (${sound.id})`);
+
+        const resp = await fetch('/api/download_sound', {
+            method: 'POST',
+            body: JSON.stringify({id: sound.id}),
+        });
+        if (!resp.ok) {
+            const { error: errorMsg } = await resp.json();
+            error(errorMsg);
+            handleNotAuthenticatedError(errorMsg);
+            throw new Error(errorMsg);
+        }
+        return await resp.arrayBuffer()
+    },
+
+
     async stopSounds(guildId: string): Promise<void> {
         log(`Stop all sounds`);
         await api._fetch('/api/stop_sounds', 'POST', { guildId });

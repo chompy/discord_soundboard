@@ -409,6 +409,18 @@ func httpApiModSound(rctx *RequestContext) (any, error, error) {
 				return nil, err, errDatabaseWrite
 			}
 
+			// check if other records are using sound, if not then delete file
+			soundHash := sound.Hash
+			if soundHash != "" {
+				sounds, err := rctx.Services.Database.FetchSoundsByHash(soundHash)
+				if err != nil {
+					return nil, err, errDatabaseRead
+				}
+				if len(sounds) == 0 {
+					rctx.Services.Sound.Delete(soundHash)
+				}
+			}
+
 			return nil, nil, nil
 		}
 	}
@@ -471,6 +483,7 @@ func httpApiPlaySound(rctx *RequestContext) (any, error, error) {
 		if err != nil {
 			return nil, err, errSoundRead
 		}
+		defer soundReader.Close()
 
 		vs, err := rctx.Services.Discord.VoiceSession(guildID)
 		if err != nil {
@@ -487,6 +500,49 @@ func httpApiPlaySound(rctx *RequestContext) (any, error, error) {
 	}
 
 	return nil, nil, nil
+}
+
+type httpDownloadSound struct {
+	ID int64 `json:"id"`
+}
+
+func httpApiDownloadSound(rctx *RequestContext) (string, error, error) {
+	params := httpDownloadSound{}
+	if err := httpApiJsonRead(rctx.Req, &params); err != nil {
+		return "", err, errInvalidParam
+	}
+
+	var err error
+	rctx.User, err = checkUser(rctx.Services.Database, rctx.Req)
+	if err != nil {
+		return "", err, errNotAuthenticated
+	}
+
+	dsound, _, err := rctx.Services.Database.FetchSoundByIDAndUser(params.ID, rctx.User.ID)
+	if err != nil {
+		return "", err, errDatabaseRead
+	}
+
+	if dsound.Hash != "" {
+		soundReader, err := rctx.Services.Sound.Load(dsound.Hash)
+		if err != nil {
+			return "", err, errSoundRead
+		}
+		defer soundReader.Close()
+		rctx.RW.Header().Add("Content-Type", "application/octet-stream")
+		rctx.RW.Header().Add("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.dat\"", dsound.Name))
+		rctx.RW.WriteHeader(200)
+
+		opusStream, err := sound.DecodeOpusFrames(soundReader)
+		if err != nil {
+			return "", err, errSoundRead
+		}
+
+		if _, err := io.Copy(rctx.RW, opusStream); err != nil {
+			return "", err, errSoundRead
+		}
+	}
+	return "", nil, nil
 }
 
 type httpStopSounds struct {
@@ -583,6 +639,7 @@ func Serve(
 	http.HandleFunc("/api/sort_category_sounds", handleHttpApi(&services, httpApiSortSound))
 	http.HandleFunc("/api/upload_sound", handleHttpApi(&services, httpApiUploadSound))
 	http.HandleFunc("/api/play_sound", handleHttpApi(&services, httpApiPlaySound))
+	http.HandleFunc("/api/download_sound", handleHttp(&services, httpApiDownloadSound))
 	http.HandleFunc("/api/stop_sounds", handleHttpApi(&services, httpApiStopSounds))
 
 	logger.Info().Msgf("Start web server at http://0.0.0.0:%d", port)
