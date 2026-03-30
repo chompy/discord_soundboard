@@ -33,6 +33,20 @@ export type Sound = {
     updated?: Date;
 };
 
+export type UserFavorite = {
+    userId: number;
+    soundId: number;
+    created: Date;
+}
+
+export type UserKeybind = {
+    userId: number;
+    soundId: number;
+    key: string;
+    created: Date;
+}
+
+
 export const isSound = (value: unknown) =>
     typeof value === 'object' && value && 'hash' in value;
 
@@ -161,4 +175,41 @@ export const api = {
         log(`Stop all sounds`);
         await api._fetch('/api/stop_sounds', 'POST', { guildId });
     },
+
+    async listUserFavorites(): Promise<UserFavorite[]> {
+        log(`Fetch favorite sounds`);
+        const { favorites } = await api._fetch('/api/user_favorite')
+        return favorites;
+    },
+
+    async addUserFavorite(sound: Sound): Promise<void> {
+        log(`Add favorite sound ${sound.name} (${sound.id})`);
+        await api._fetch('/api/user_favorite', 'POST', {soundId: sound.id})
+    },
+
+    async deleteUserFavorite(sound: Sound): Promise<void> {
+        log(`Delete favorite sound ${sound.name} (${sound.id})`);
+        await api._fetch('/api/user_favorite', 'DELETE', {soundId: sound.id})
+    },
+    
+    async listUserKeybinds(): Promise<UserKeybind[]> {
+        log(`Fetch keybinds`);
+        const { keybinds } = await api._fetch('/api/user_keybind')
+        return keybinds;
+    },
+
+    async addUserKeybind(sound: Sound, key: string): Promise<void> {
+        log(`Save keybind ${key} for ${sound.name} (${sound.id})`);
+        await api._fetch('/api/user_keybind', 'POST', {soundId: sound.id, key})
+    },
+
+    async deleteUserKeybindForSound(sound: Sound): Promise<void> {
+        log(`Delete keybind for sound ${sound.name} (${sound.id})`);
+        await api._fetch('/api/user_keybind', 'DELETE', {soundId: sound.id})
+    },
+
+    async deleteUserKeybindForKey(key: string): Promise<void> {
+        log(`Delete keybind for key ${key}`);
+        await api._fetch('/api/user_keybind', 'DELETE', {key})
+    } 
 };

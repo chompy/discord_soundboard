@@ -1,13 +1,13 @@
-import '../scss/app.scss';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Guild, Sound, api } from '../api';
+import useSoundList from '../hooks/sound_list';
+import '../scss/app.scss';
+import { isNotAuthenticatedError, log } from '../utils';
 import Button from './button';
 import GuildSelect from './guild_select';
 import Modal from './modal';
 import SoundAdmin from './sound_admin';
-import { api, Guild, Sound } from '../api';
-import { getSoundKeybindForKey, isNotAuthenticatedError, log } from '../utils';
 import SoundPlayer from './sound_player';
-import useSoundList from '../hooks/sound_list';
 
 export type ModalType = 'admin' | null;
 
@@ -26,7 +26,7 @@ function AppComponent() {
         activeGuild && api.stopSounds(activeGuild.id);
     }, [activeGuild]);
 
-    const onKeyDown = useCallback((e: KeyboardEvent) => {
+    const onKeyDown = useCallback(async (e: KeyboardEvent) => {
         if (!keyPressEnabled) return;
         switch (e.key) {
             case 's':
@@ -40,10 +40,10 @@ function AppComponent() {
                 break;
             default:
                 // play sound from keybind
-                const soundId = getSoundKeybindForKey(e.key);
-                if (soundId !== null) {
-                    const sound = soundList.sounds.get().find((sound) => sound.id === soundId);
-                    sound && api.playSound(sound)
+                const keybind = soundList.keybinds.get().find((keybind) => keybind.key === e.key);
+                if (keybind) {
+                    const sound = soundList.sounds.get().find((sound) => sound.id === keybind.soundId);
+                    sound && api.playSound(sound)                    
                 }
                 break;
         }
@@ -81,7 +81,11 @@ function AppComponent() {
 
     const onKeyBindSoundSelect = (sound: Sound | null) => {
         setKeyPressEnabled(!sound);
-        filterInputRef.current.blur()
+        filterInputRef.current.blur();
+        if (sound === null) {
+            setPlayerKeyPressEnabled(false);
+            setTimeout(() => setPlayerKeyPressEnabled(true), 1);
+        }
     }
 
     if (error) {
@@ -134,7 +138,7 @@ function AppComponent() {
                 />
             </div>
 
-            {activeGuild && <SoundPlayer soundList={soundList} enableKeyBinding={playerKeyPressEnabled} onSelect={onKeyBindSoundSelect} />}
+            {activeGuild && <SoundPlayer soundList={soundList} enableKeyBinding={playerKeyPressEnabled} onKeybindSelect={onKeyBindSoundSelect} />}
         </div>
     );
 }

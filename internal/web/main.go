@@ -564,6 +564,94 @@ func httpApiStopSounds(rctx *RequestContext) (any, error, error) {
 	return nil, nil, nil
 }
 
+type httpUserFavorite struct {
+	SoundID int64 `json:"soundId"`
+}
+
+func httpApiUserFavorite(rctx *RequestContext) (any, error, error) {
+	params := httpUserFavorite{}
+	if rctx.Req.Method != http.MethodGet {
+		if err := httpApiJsonRead(rctx.Req, &params); err != nil {
+			return nil, err, errInvalidParam
+		}
+	}
+
+	var err error
+	rctx.User, err = checkUser(rctx.Services.Database, rctx.Req)
+	if err != nil {
+		return "", err, errNotAuthenticated
+	}
+
+	switch rctx.Req.Method {
+	case http.MethodGet:
+		records, err := rctx.Services.Database.FetchUserFavoritesByUserID(rctx.User.ID)
+		if err != nil {
+			return "", err, errDatabaseRead
+		}
+		return map[string]any{"success": true, "favorites": records}, nil, nil
+	case http.MethodPost:
+		if err := rctx.Services.Database.Save(&database.UserFavorite{UserID: rctx.User.ID, SoundID: params.SoundID}); err != nil {
+			return "", err, errDatabaseWrite
+		}
+		return map[string]any{"success": true}, nil, nil
+	case http.MethodDelete:
+		if err := rctx.Services.Database.DeleteUserFavoriteByUserIDAndSoundID(rctx.User.ID, params.SoundID); err != nil {
+			return "", err, errDatabaseWrite
+		}
+		return map[string]any{"success": true}, nil, nil
+	}
+
+	return nil, nil, errInvalidMethod
+}
+
+type httpUserKeybind struct {
+	SoundID int64  `json:"soundId"`
+	Key     string `json:"key"`
+}
+
+func httpApiUserKeybind(rctx *RequestContext) (any, error, error) {
+	params := httpUserKeybind{}
+	if rctx.Req.Method != http.MethodGet {
+		if err := httpApiJsonRead(rctx.Req, &params); err != nil {
+			return nil, err, errInvalidParam
+		}
+	}
+
+	var err error
+	rctx.User, err = checkUser(rctx.Services.Database, rctx.Req)
+	if err != nil {
+		return "", err, errNotAuthenticated
+	}
+
+	switch rctx.Req.Method {
+	case http.MethodGet:
+		records, err := rctx.Services.Database.FetchUserKeybindsByUserID(rctx.User.ID)
+		if err != nil {
+			return "", err, errDatabaseRead
+		}
+		return map[string]any{"success": true, "keybinds": records}, nil, nil
+	case http.MethodPost:
+		if err := rctx.Services.Database.Save(&database.UserKeybind{UserID: rctx.User.ID, SoundID: params.SoundID, Key: params.Key}); err != nil {
+			return "", err, errDatabaseWrite
+		}
+		return map[string]any{"success": true}, nil, nil
+	case http.MethodDelete:
+		if params.SoundID > 0 {
+			if err := rctx.Services.Database.DeleteUserKeybindByUserIDAndSoundID(rctx.User.ID, params.SoundID); err != nil {
+				return "", err, errDatabaseWrite
+			}
+		}
+		if params.Key != "" {
+			if err := rctx.Services.Database.DeleteUserKeybindByUserIDAndKey(rctx.User.ID, params.Key); err != nil {
+				return "", err, errDatabaseWrite
+			}
+		}
+		return map[string]any{"success": true}, nil, nil
+	}
+
+	return nil, nil, errInvalidMethod
+}
+
 func handleHttp(services *Services, callback func(rctx *RequestContext) (string, error, error)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestIDCounter++
@@ -641,6 +729,8 @@ func Serve(
 	http.HandleFunc("/api/play_sound", handleHttpApi(&services, httpApiPlaySound))
 	http.HandleFunc("/api/download_sound", handleHttp(&services, httpApiDownloadSound))
 	http.HandleFunc("/api/stop_sounds", handleHttpApi(&services, httpApiStopSounds))
+	http.HandleFunc("/api/user_favorite", handleHttpApi(&services, httpApiUserFavorite))
+	http.HandleFunc("/api/user_keybind", handleHttpApi(&services, httpApiUserKeybind))
 
 	logger.Info().Msgf("Start web server at http://0.0.0.0:%d", port)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)

@@ -39,7 +39,7 @@
                 position: absolute;
                 right: 5px; 
                 top: 5px;
-                a {
+                .pure-button, span {
                     display: inline-block;
                     background-color: vars.$primary-color;
                     padding: 3px 5px;
@@ -47,16 +47,31 @@
                     font-size: 14px;
                     text-decoration: none;
                     vertical-align: 4px;
+                    margin-right: 1px;
                 }
-                a.sound-keybind {
+                span.sound-keybind {
+                    cursor: pointer;
                     background: #4a4a4a;
                     border-radius: 10px;
                     min-width: 10px;
                     text-align: center;
-                    &.selected {
+                    &.active {
                         outline: 2px dashed #1dec00;                        
                     }
                 }
+                .favorite-btn {
+                    display: inline-block;
+                    text-decoration: none;
+                    vertical-align: 4px;
+                    padding: 3px 5px;
+                    filter: saturate(0);
+                    &:hover {
+                        filter: saturate(1);
+                    }
+                }
+            }
+            &.favorite .favorite-btn {
+                filter: saturate(1);
             }
         }
     }

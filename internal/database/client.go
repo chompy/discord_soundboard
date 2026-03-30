@@ -17,7 +17,7 @@ type Table interface {
 }
 
 var tables = []Table{
-	&Guild{}, &User{}, &UserGuild{}, &Category{}, &Sound{},
+	&Guild{}, &User{}, &UserGuild{}, &Category{}, &Sound{}, &UserFavorite{}, &UserKeybind{},
 }
 
 type Client struct {
