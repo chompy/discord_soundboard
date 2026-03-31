@@ -26,18 +26,19 @@ export function SoundPlayerSound({sound, soundList, nameMaxWidth, enableKeyBindi
         </span>
         <span className="sound-options">
             <a
-                className='pure-button'
                 href="#"
+                title="Play"
                 onClick={(e) => {
                     e.preventDefault();
                     api.playSound(sound);
                 }}
             >
-                Play
+                ▶️
             </a>
             <a
                 className='favorite-btn'
                 href="#"
+                title="Add/Remove Favorite"
                 onClick={(e) => {
                     e.preventDefault();
                     soundList.setFavorite(sound, !isFavorite);

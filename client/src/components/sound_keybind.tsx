@@ -18,7 +18,7 @@ export type SoundKeybindProperties = {
 export function SoundKeybind({sound, soundList, enabled, onSelect}: SoundKeybindProperties) {
 
     const [active, setActive] = useState(false);
-    const keybind = soundList.keybinds.get().find((keybind) => keybind.soundId === sound.id)
+    const keybind = useMemo(() => soundList.keybinds.get().find((keybind) => keybind.soundId === sound.id), [sound, enabled, soundList, soundList.keybinds])
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
@@ -56,7 +56,7 @@ export function SoundKeybind({sound, soundList, enabled, onSelect}: SoundKeybind
         onMouseLeave={onExit}
         onClick={(e) => e.preventDefault()}
     >
-        {keybind ? keybind.key : '-'}
+        {keybind && keybind.key ? keybind.key : '-'}
     </span>
     
 }

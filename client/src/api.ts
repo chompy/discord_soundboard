@@ -42,7 +42,7 @@ export type UserFavorite = {
 export type UserKeybind = {
     userId: number;
     soundId: number;
-    key: string;
+    key: string | null;
     created: Date;
 }
 

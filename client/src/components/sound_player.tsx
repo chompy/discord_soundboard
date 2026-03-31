@@ -32,24 +32,33 @@ function SoundPlayer({ soundList, enableKeyBinding, onKeybindSelect }: SoundPlay
     }, [elementRef.current]);
 
     if (isLoading) return;
+
+    const favorites = soundList.favorites.get();
+
     return (
         <div ref={elementRef} className="sound-player">
+            {favorites.length > 0 && 
             <div className='favorites'>
-                {soundList.favorites.get().map(({soundId}) => {
-                    const sound = soundList.sounds.get().find((sound) => sound.id === soundId);
-                    return sound ? <SoundPlayerSound 
-                        sound={sound} 
-                        soundList={soundList}
-                        nameMaxWidth={nameMaxWidth}
-                        enableKeyBinding={enableKeyBinding}
-                        onKeybindSelect={onKeybindSelect}
-                    /> : null;
-                })}
-            </div>
+                <h2>Favorites</h2>
+                <div className='categories'>
+
+                    {favorites.map(({soundId}) => {
+                        const sound = soundList.sounds.get().find((sound) => sound.id === soundId);
+                        return sound ? <SoundPlayerSound 
+                            sound={sound} 
+                            soundList={soundList}
+                            nameMaxWidth={nameMaxWidth}
+                            enableKeyBinding={enableKeyBinding}
+                            onKeybindSelect={onKeybindSelect}
+                        /> : null;
+                    })}
+
+                </div>
+            </div>}
             <div className="categories">
                 {categories.get().map((category) => (
                     <div key={`category-${category.id}`} className="category">
-                        <div className="category-name">{category.name}</div>
+                        <h2 className="category-name">{category.name}</h2>
                         <div className="sounds">
                             {sounds
                                 .get()

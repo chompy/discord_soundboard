@@ -47,9 +47,8 @@ function useSoundList(guildId?: string) {
             return;
         }
         await api.deleteUserKeybindForKey(key)
-        keybinds.delete(...keybinds.get().flatMap((keybind) => keybind.key === key ? [keybind] : []));
         await api.addUserKeybind(sound, key);
-        keybinds.update({userId: 0, soundId: sound.id, key, created: new Date()});
+        keybinds.update({userId: 0, soundId: sound.id, key, created: new Date()}, ...keybinds.get().flatMap((keybind) => keybind.key === key ? [{...keybind, key: null}] : []));
     }, [guildId, keybinds]);
 
     useEffect(() => {
