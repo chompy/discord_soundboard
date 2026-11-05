@@ -24,6 +24,11 @@ func New(storagePath string, logger *zerolog.Logger) *Client {
 }
 
 func (c *Client) Save(reader io.Reader) (FileInfo, error) {
+	normalized, err := NormalizeOpusFrames(reader)
+	if err != nil {
+		return FileInfo{}, err
+	}
+
 	file, err := os.CreateTemp(c.storagePath, "_*")
 	if err != nil {
 		return FileInfo{}, err
@@ -33,7 +38,7 @@ func (c *Client) Save(reader io.Reader) (FileInfo, error) {
 		os.Remove(file.Name())
 	}()
 
-	hash, size, err := WriteOpusFrames(reader, file)
+	hash, size, err := WriteOpusFrames(normalized, file)
 	if err != nil {
 		return FileInfo{}, err
 	}
